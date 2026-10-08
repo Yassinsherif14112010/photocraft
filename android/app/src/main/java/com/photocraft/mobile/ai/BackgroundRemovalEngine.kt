@@ -46,60 +46,23 @@ class BackgroundRemovalEngine(context: Context) {
     /**
      * Run matting and return an ARGB bitmap whose alpha channel is the predicted
      * subject mask (colours preserved from the source). Caller applies it to the
-     * document as a cutout or a layer mask.
+     * document as a cutout or a layer mask. `inputSize` picks the network input
+     * (512 for the quick preview, 1024 for HQ).
      */
-    fun removeBackground(src: Bitmap): Bitmap {
-        ensureSession()
-        val resized = Bitmap.createScaledBitmap(src, INPUT_SIZE, INPUT_SIZE, true)
-        val buffer = FloatBuffer.allocate(1 * 3 * INPUT_SIZE * INPUT_SIZE)
-        fillCHW(resized, buffer)
-
-        val matte = OnnxTensor.createTensor(
-            env, buffer, longArrayOf(1, 3, INPUT_SIZE.toLong(), INPUT_SIZE.toLong())
-        ).use { tensor ->
-            session.get()!!.run(mapOf(inputName to tensor)).use { out ->
-                val value = out.get(0).value
-                when (value) {
-                    is Array<Array<Array<FloatArray>>> -> sigmoid(value[0][0])
-                    is Array<FloatArray> -> sigmoid(value)
-                    else -> error("unexpected BiRefNet output shape")
-                }
-            }
-        }
-
-        // Compose result: source pixels scaled up + matte as alpha.
-        val scaledSrc = Bitmap.createScaledBitmap(src, INPUT_SIZE, INPUT_SIZE, true)
-        val pixels = IntArray(INPUT_SIZE * INPUT_SIZE)
-        scaledSrc.getPixels(pixels, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
-        for (i in pixels.indices) {
-            val a = (matte[i].coerceIn(0f, 1f) * 255f).toInt()
-            pixels[i] = (a shl 24) or (pixels[i] and 0x00FFFFFF)
-        }
-        val out = Bitmap.createBitmap(INPUT_SIZE, INPUT_SIZE, Bitmap.Config.ARGB_8888)
-        out.setPixels(pixels, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
-        return out
+    fun removeBackground(src: Bitmap, inputSize: Int = INPUT_SIZE): Bitmap {
+        val matte = matteOf(src, inputSize)
+        return MatteRefine.compose(src, matte, inputSize)
     }
 
-    /** Extract the raw matte (0..1) as a grayscale ARGB bitmap (for mask previews). */
-    fun mattePreview(src: Bitmap): Bitmap {
-        val matteMatte = matte(src)
-        val out = Bitmap.createBitmap(INPUT_SIZE, INPUT_SIZE, Bitmap.Config.ARGB_8888)
-        val pixels = IntArray(INPUT_SIZE * INPUT_SIZE)
-        for (i in pixels.indices) {
-            val v = (matteMatte[i].coerceIn(0f, 1f) * 255f).toInt()
-            pixels[i] = (0xFF shl 24) or (v shl 16) or (v shl 8) or v
-        }
-        out.setPixels(pixels, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
-        return out
-    }
-
-    private fun matte(src: Bitmap): FloatArray {
+    /** Extract the raw matte (0..1, row-major, inputSize×inputSize). */
+    fun matteOf(src: Bitmap, inputSize: Int = INPUT_SIZE): FloatArray {
         ensureSession()
-        val resized = Bitmap.createScaledBitmap(src, INPUT_SIZE, INPUT_SIZE, true)
-        val buffer = FloatBuffer.allocate(1 * 3 * INPUT_SIZE * INPUT_SIZE)
+        val size = if (inputSize == INPUT_SIZE) INPUT_SIZE else inputSize.coerceIn(64, INPUT_SIZE)
+        val resized = Bitmap.createScaledBitmap(src, size, size, true)
+        val buffer = FloatBuffer.allocate(1 * 3 * size * size)
         fillCHW(resized, buffer)
         OnnxTensor.createTensor(
-            env, buffer, longArrayOf(1, 3, INPUT_SIZE.toLong(), INPUT_SIZE.toLong())
+            env, buffer, longArrayOf(1, 3, size.toLong(), size.toLong())
         ).use { tensor ->
             session.get()!!.run(mapOf(inputName to tensor)).use { out ->
                 val value = out.get(0).value
@@ -110,6 +73,12 @@ class BackgroundRemovalEngine(context: Context) {
                 }
             }
         }
+    }
+
+    /** Extract the raw matte (0..1) as a grayscale ARGB bitmap (for mask previews). */
+    fun mattePreview(src: Bitmap): Bitmap {
+        val matteMatte = matteOf(src, INPUT_SIZE)
+        return MatteRefine.preview(matteMatte, INPUT_SIZE)
     }
 
     private fun sigmoid(map: FloatArray): FloatArray {

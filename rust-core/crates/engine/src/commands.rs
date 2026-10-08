@@ -1054,6 +1054,7 @@ fn build() -> Vec<CommandSpec> {
     v.extend(crate::render_cmds::specs());
     v.extend(crate::slice_cmds::specs());
     v.extend(crate::web_cmds::specs());
+    v.extend(crate::svg_cmds::specs());
     v.extend(crate::automate_cmds::specs());
     v.extend(crate::print_cmds::specs());
     v.extend(crate::pick_cmds::specs());

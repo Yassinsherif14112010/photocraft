@@ -11,10 +11,10 @@ export function LayersPanel() {
   const st = useEditor();
 
   const toggleVisible = (l: LayerSummary) =>
-    runCommand('layer.visible', {id: l.id, visible: !l.visible});
+    runCommand('layer.setProps', {layer: l.id, visible: !l.visible});
 
   const duplicate = (l: LayerSummary) => runCommand('layer.duplicate', {id: l.id});
-  const remove = (l: LayerSummary) => runCommand('layer.remove', {id: l.id});
+  const remove = (l: LayerSummary) => runCommand('layer.delete', {layer: l.id});
   const group = () => runCommand('layer.groupLayers', {ids: [st.activeLayerId]});
 
   return (
@@ -23,7 +23,7 @@ export function LayersPanel() {
         <Pressable style={styles.btn} onPress={group}>
           <Text style={styles.btnText}>📁 {s.editor.group}</Text>
         </Pressable>
-        <Pressable style={styles.btn} onPress={() => runCommand('layer.addRaster', {})}>
+        <Pressable style={styles.btn} onPress={() => runCommand('layer.new.layer', {})}>
           <Text style={styles.btnText}>+ {s.editor.addLayer}</Text>
         </Pressable>
       </View>

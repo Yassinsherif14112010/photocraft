@@ -29,6 +29,8 @@ export interface CutoutResult {
   rgba: string; // base64 RGBA8
   width: number;
   height: number;
+  /** Set when the native side wrote the cutout PNG to disk (file.placeEmbedded input). */
+  savedAs?: string;
 }
 
 export interface PhotoCraftEngineNative {
@@ -45,6 +47,8 @@ export interface PhotoCraftEngineNative {
     quality: number,
   ): Promise<EngineReply>;
   renderThumbnail(sessionId: number, maxSide: number): Promise<string>;
+  /** Read a file from app storage as base64 (inbox images for OCR / BG removal). */
+  readFileBase64(path: string): Promise<string>;
 }
 
 export interface OcrEngineNative {
@@ -56,14 +60,31 @@ export interface OcrEngineNative {
 export interface BackgroundRemovalNative {
   isModelReady(): Promise<boolean>;
   modelsDir(): Promise<string>;
-  removeBackgroundQuick(image: string): Promise<CutoutResult>;
-  removeBackgroundHQ(image: string): Promise<CutoutResult>;
+  /** AI matting. `optionsJson`: {mode:'quick'|'hq', threshold, edgeSmooth, feather, shiftEdge, saveAs?}. */
+  removeBackground(image: string, optionsJson: string): Promise<EngineReply>;
+  /** Grayscale matte preview PNG (data URL) without touching the document. */
+  mattePreview(image: string, optionsJson: string): Promise<EngineReply>;
 }
 
-const {PhotoCraftEngine, OcrEngine, BackgroundRemoval} = NativeModules as {
+export interface PhotoCraftAssetsNative {
+  /** Read a bundled asset file (android assets/asset-library/…). */
+  readAsset(path: string): Promise<string>;
+}
+
+export interface FileTextNative {
+  /** Write UTF-8 text to app storage (brand-kit import/export, JSON payloads). */
+  writeTextFile(path: string, contents: string): Promise<boolean>;
+  readTextFile(path: string): Promise<string>;
+  /** Copy a content:// URI (document picker) into app storage; returns the path. */
+  copyUriToCache(uri: string, name: string): Promise<string>;
+}
+
+const {PhotoCraftEngine, OcrEngine, BackgroundRemoval, PhotoCraftAssets, FileText} = NativeModules as {
   PhotoCraftEngine: PhotoCraftEngineNative;
   OcrEngine: OcrEngineNative;
   BackgroundRemoval: BackgroundRemovalNative;
+  PhotoCraftAssets?: PhotoCraftAssetsNative;
+  FileText?: FileTextNative;
 };
 
 if (!PhotoCraftEngine) {
@@ -75,6 +96,8 @@ if (!PhotoCraftEngine) {
 export const Engine = PhotoCraftEngine;
 export const Ocr = OcrEngine;
 export const BgRemoval = BackgroundRemoval;
+export const Assets = PhotoCraftAssets;
+export const FileIO = FileText;
 
 /** Parse an engine reply into a JSON object or throw. */
 export async function engineJson<T>(

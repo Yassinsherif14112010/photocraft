@@ -190,7 +190,7 @@ export function EditorScreen({onNavigate}: {onNavigate: (r: Route) => void}) {
               <Pressable
                 key={b}
                 style={[styles.chip, active.blend === b && styles.chipOn]}
-                onPress={() => runCommand('layer.blend', {id: active.id, blend: b})}>
+                onPress={() => runCommand('layer.setProps', {layer: active.id, blend: b})}>
                 <Text style={[styles.chipText, active.blend === b && styles.chipTextOn]}>{b}</Text>
               </Pressable>
             ))}
@@ -200,7 +200,7 @@ export function EditorScreen({onNavigate}: {onNavigate: (r: Route) => void}) {
             maximumValue={100}
             value={active.opacity * 100}
             onSlidingComplete={v =>
-              runCommand('layer.opacity', {id: active.id, opacity: v / 100})
+              runCommand('layer.setProps', {layer: active.id, opacity: v / 100})
             }
             minimumTrackTintColor={theme.accent}
           />
@@ -359,8 +359,9 @@ async function loadInboxAsDataUrl(): Promise<string> {
   // The inbox file is staged by the share-intent receiver (MainActivity).
   const path = '/data/data/com.photocraft.mobile/files/inbox/last.png';
   const {Engine} = await import('../../native/PhotoCraftEngine');
-  // base64 read goes through the engine module's storage helpers on native.
-  return `file://${path}` === '' ? '' : await (Engine as any).readFileBase64?.(path) ?? `data:image/png;base64,${path}`;
+  // Real base64 read through the engine module (app-storage paths only).
+  const b64 = await (Engine as any).readFileBase64(path);
+  return `data:image/png;base64,${b64}`;
 }
 
 const styles = StyleSheet.create({

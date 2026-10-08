@@ -13,6 +13,8 @@ import com.facebook.soloader.SoLoader
 import com.photocraft.mobile.ai.OcrModule
 import com.photocraft.mobile.ai.BackgroundRemovalModule
 import com.photocraft.mobile.engine.PhotoCraftModule
+import com.photocraft.mobile.support.AssetsModule
+import com.photocraft.mobile.support.FileTextModule
 
 class MainApplication : Application(), ReactApplication {
 
@@ -46,6 +48,8 @@ class PhotoCraftAppPackage : ReactPackage {
             PhotoCraftModule(reactContext),
             OcrModule(reactContext),
             BackgroundRemovalModule(reactContext),
+            FileTextModule(reactContext),
+            AssetsModule(reactContext),
         )
 
     override fun createViewManagers(reactContext: com.facebook.react.bridge.ReactApplicationContext) =

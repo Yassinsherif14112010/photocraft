@@ -85,9 +85,15 @@ unsafe fn read_str(ptr: *const c_char) -> String {
 // ---------------------------------------------------------------------------
 
 /// Create a new headless engine session (one per open document).
+///
+/// The Android app is the local, trusted caller (like the upstream CLI): it
+/// supplies real host paths for `doc.open`, `doc.save` and `file.placeEmbedded`,
+/// so the session gets the filesystem authority those commands require. An
+/// authority-less session would reject every file operation.
 #[no_mangle]
 pub extern "C" fn pcm_session_new() -> *mut Headless {
-    let session = std::panic::catch_unwind(Headless::new).unwrap_or_else(|_| Headless::new());
+    let session =
+        std::panic::catch_unwind(Headless::trusted_local).unwrap_or_else(|_| Headless::trusted_local());
     Box::into_raw(Box::new(session))
 }
 
@@ -126,6 +132,9 @@ pub unsafe extern "C" fn pcm_call(
             serde_json::from_str(&params_s).map_err(|e| format!("bad params JSON: {e}"))?
         };
         let h = unsafe { &mut *session };
+        // Apply finished background jobs (filters run with `wait:false`) so every
+        // call — save, render, inspect — observes the document as of now.
+        h.sync_jobs();
         let out = h
             .handle(&method, params)
             .map_err(|e| format!("{e}"))?;

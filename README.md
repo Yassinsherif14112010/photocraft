@@ -24,14 +24,14 @@ ONNX Runtime (local)       ← PaddleOCR (AR/EN) · BiRefNet Lite matting
 | Document / Layer / Group / Mask engines | `rust-core/crates/{doc,compose}` via `engine.execute` |
 | Blend modes (28) + layer styles (10: shadow/glow/stroke/overlay/satin/bevel…) | engine `doc::Effects`, UI `src/core/engines/LayerStyles.ts` |
 | Text Studio: point/paragraph text, RTL عربي/English, kerning/tracking/leading, styles, fonts, transform, persistence | `rust-core/crates/text`, UI `TextStudio.ts` |
-| SVG import/export/groups/metadata/validation | `rust-core/crates/vector`, UI `SvgEngine.ts` |
+| SVG import (subset → shape layers), export, groups, metadata, validation, capability detection | engine `svg_cmds.rs` (new real module), UI `SvgEngine.ts` |
 | PSD / PSB save+load (layers, masks, effects, TySh text) | `rust-core/crates/psd` + `io`, UI `ExportCenter.ts` |
 | Export Center: PNG/JPG/WebP/PSD/PSB + quality/presets/transparent | `rust-core/crates/{codecs,io}` |
-| OCR (AR/EN, local PaddleOCR) + `CreateTextLayerFromOCR` + metadata | `ai/OcrEngine.kt`, UI `OcrEngine.ts` |
-| Background removal (local BiRefNet Lite) → raster + layer mask | `ai/BackgroundRemovalEngine.kt`, UI `BackgroundRemoval.ts` |
+| OCR (AR/EN, local PaddleOCR): language detection, batch, provenance notes, text-layer creation | `ai/OcrEngine.kt`, UI `OcrEngine.ts` |
+| Background removal: local BiRefNet Lite (quick 512² / HQ 1024² + matte refinement) → real layer mask, plus engine Select Subject (`layer.removeBackground`) | `ai/BackgroundRemovalEngine.kt` + `ai/MatteRefine.kt`, UI `BackgroundRemoval.ts` |
 | Asset Library: icons/shapes/stickers/search/favorites/recents | `src/core/engines/AssetLibrary.ts` + bundled SVGs |
 | Brand Kit: colors/fonts/logos/templates/reusable styles | `src/core/engines/BrandKit.ts` |
-| Smart Resize: IG/FB/TikTok/YT/Pinterest + reflow + safe areas | `src/core/engines/SmartResize.ts` |
+| Smart Resize: IG/FB/TikTok/YT/Pinterest/LinkedIn + bounds-based refit + real guides + history | `src/core/engines/SmartResize.ts` |
 
 ## Build
 

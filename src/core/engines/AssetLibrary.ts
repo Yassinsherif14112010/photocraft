@@ -1,12 +1,16 @@
 /**
  * Asset Library — bundled icons/shapes/stickers + user assets, with search,
- * categories, favorites and recents. Assets are real SVG sources; adding one
- * creates true vector layers through the SVG engine. User-imported PNGs become
- * raster layers. Metadata (favorites/recents) persists in AsyncStorage.
+ * categories, favorites, tags, recents, import, delete, update, metadata and
+ * real rendered thumbnails. Assets are real SVG sources (read from the bundled
+ * Android assets through PhotoCraftAssets, with an inline fallback); placing
+ * one creates true vector layers through the engine's `svg.importText`. User
+ * PNG/JPEG imports are placed as raster layers via `file.placeEmbedded`.
+ * Favorites/recents/tags persist in AsyncStorage.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {SvgEngine} from './SvgEngine';
-import {Editor} from '../DocumentStore';
+import {Editor, getState} from '../DocumentStore';
+import {Engine, Assets as NativeAssets} from '../../native/PhotoCraftEngine';
 
 export type AssetCategory = 'icons' | 'shapes' | 'stickers' | 'user';
 
@@ -16,12 +20,15 @@ export interface AssetItem {
   nameAr: string;
   category: AssetCategory;
   tags: string[];
-  /** Bundled require() key or user file path. */
+  /** Bundled asset path (inside asset-library/) or user file path. */
   source: string;
+  addedAt?: number;
 }
 
 const KEY_FAV = 'pc.assets.favorites';
 const KEY_RECENT = 'pc.assets.recents';
+const KEY_USER = 'pc.assets.user';
+const KEY_TAGS = 'pc.assets.tags';
 
 /** Bundled library — real SVG sources ship in android assets (asset-library/). */
 export const BUNDLED_ASSETS: AssetItem[] = [
@@ -40,12 +47,24 @@ export const BUNDLED_ASSETS: AssetItem[] = [
   {id: 'st-open', name: 'Open 24/7', nameAr: 'مفتوح ٢٤ ساعة', category: 'stickers', tags: ['open', 'hours', 'shop'], source: 'stickers/open.svg'},
 ];
 
+/** In-memory thumbnail cache (data URLs rendered by the engine). */
+const thumbCache = new Map<string, string>();
+
 export const AssetLibrary = {
-  all: (): AssetItem[] => BUNDLED_ASSETS,
+  async all(): Promise<AssetItem[]> {
+    const user = await AssetLibrary.userAssets();
+    return [...user, ...BUNDLED_ASSETS];
+  },
+
+  /** User-imported assets (real files in app storage). */
+  async userAssets(): Promise<AssetItem[]> {
+    return JSON.parse((await AsyncStorage.getItem(KEY_USER)) ?? '[]') as AssetItem[];
+  },
 
   async search(query: string, category?: AssetCategory): Promise<AssetItem[]> {
+    const all = await AssetLibrary.all();
     const q = query.trim().toLowerCase();
-    return BUNDLED_ASSETS.filter(a => {
+    return all.filter(a => {
       if (category && a.category !== category) {
         return false;
       }
@@ -55,10 +74,16 @@ export const AssetLibrary = {
       return (
         a.name.toLowerCase().includes(q) ||
         a.nameAr.includes(query) ||
-        a.tags.some(t => t.includes(q))
+        a.tags.some(t => t.toLowerCase().includes(q))
       );
     });
   },
+
+  async categories(): Promise<AssetCategory[]> {
+    return ['icons', 'shapes', 'stickers', 'user'];
+  },
+
+  // ------------------------------------------------------------- favorites
 
   async favorites(): Promise<string[]> {
     return JSON.parse((await AsyncStorage.getItem(KEY_FAV)) ?? '[]');
@@ -75,6 +100,8 @@ export const AssetLibrary = {
     return favs.has(id);
   },
 
+  // ----------------------------------------------------------------- recents
+
   async recents(): Promise<string[]> {
     return JSON.parse((await AsyncStorage.getItem(KEY_RECENT)) ?? '[]');
   },
@@ -85,30 +112,22 @@ export const AssetLibrary = {
     await AsyncStorage.setItem(KEY_RECENT, JSON.stringify(rec.slice(0, 20)));
   },
 
-  /** Place an asset into the document (SVG → vector layers, PNG → raster). */
-  async place(asset: AssetItem, centerX: number, centerY: number, size = 320): Promise<number> {
-    await AssetLibrary.pushRecent(asset.id);
-    if (asset.category === 'user' || asset.source.endsWith('.png')) {
-      const reply = await Editor.runCommand('layer.addRasterFile', {
-        path: asset.source,
-        x: centerX - size / 2,
-        y: centerY - size / 2,
-      });
-      return reply.id;
-    }
-    const svg = await readBundledSvg(asset.source);
-    const report = await SvgEngine.importText(svg, asset.name);
-    await Editor.runCommand('layer.transform', {
-      id: report.layerId,
-      scale: size / 512,
-      anchor: 'center',
-      x: centerX,
-      y: centerY,
-    });
-    return report.layerId;
+  // -------------------------------------------------------------------- tags
+
+  /** Extra tags keyed by asset id (merged over the built-in tags). */
+  async tags(): Promise<Record<string, string[]>> {
+    return JSON.parse((await AsyncStorage.getItem(KEY_TAGS)) ?? '{}');
   },
 
-  /** Register a user asset (imported image path). */
+  async setTags(id: string, tags: string[]): Promise<void> {
+    const all = await AssetLibrary.tags();
+    all[id] = tags;
+    await AsyncStorage.setItem(KEY_TAGS, JSON.stringify(all));
+  },
+
+  // ---------------------------------------------------------------- user CRUD
+
+  /** Register a user asset from a picked/copied file path. */
   async addUserAsset(path: string, name: string, tags: string[] = []): Promise<AssetItem> {
     const item: AssetItem = {
       id: `user-${Date.now()}`,
@@ -117,20 +136,128 @@ export const AssetLibrary = {
       category: 'user',
       tags: ['user', ...tags],
       source: path,
+      addedAt: Date.now(),
     };
-    const list = JSON.parse((await AsyncStorage.getItem('pc.assets.user')) ?? '[]');
+    const list = await AssetLibrary.userAssets();
     list.unshift(item);
-    await AsyncStorage.setItem('pc.assets.user', JSON.stringify(list));
+    await AsyncStorage.setItem(KEY_USER, JSON.stringify(list));
     return item;
+  },
+
+  /** Rename / re-tag a user asset. */
+  async updateUserAsset(id: string, patch: {name?: string; tags?: string[]}): Promise<AssetItem | null> {
+    const list = await AssetLibrary.userAssets();
+    const idx = list.findIndex(a => a.id === id);
+    if (idx < 0) {
+      return null;
+    }
+    if (patch.name !== undefined) {
+      list[idx].name = patch.name;
+      list[idx].nameAr = patch.name;
+    }
+    if (patch.tags !== undefined) {
+      list[idx].tags = ['user', ...patch.tags];
+    }
+    await AsyncStorage.setItem(KEY_USER, JSON.stringify(list));
+    return list[idx];
+  },
+
+  /** Remove a user asset (the file itself is kept on disk). */
+  async deleteUserAsset(id: string): Promise<boolean> {
+    const list = await AssetLibrary.userAssets();
+    const next = list.filter(a => a.id !== id);
+    if (next.length === list.length) {
+      return false;
+    }
+    await AsyncStorage.setItem(KEY_USER, JSON.stringify(next));
+    const favs = await AssetLibrary.favorites();
+    if (favs.includes(id)) {
+      await AsyncStorage.setItem(KEY_FAV, JSON.stringify(favs.filter(f => f !== id)));
+    }
+    return true;
+  },
+
+  // ------------------------------------------------------------------ place
+
+  /** Place an asset into the document (SVG → vector layers, image → raster). */
+  async place(asset: AssetItem, centerX: number, centerY: number, size = 320): Promise<number> {
+    await AssetLibrary.pushRecent(asset.id);
+    const {doc} = getState();
+    if (!doc) {
+      throw new Error('no document open');
+    }
+    if (asset.category === 'user' || asset.source.endsWith('.png') || asset.source.endsWith('.jpg')) {
+      const reply = await Editor.runCommand('file.placeEmbedded', {
+        path: asset.source,
+        fit: false,
+        center: [centerX, centerY],
+      });
+      const id = reply.layer as number;
+      await Editor.runCommand('layer.setProps', {layer: id, name: asset.name});
+      return id;
+    }
+    const svg = await readBundledSvg(asset.source);
+    // Scale the 512-unit viewBox art to `size` on the canvas.
+    const scale = size / 512;
+    const reply = await Editor.runCommand('svg.importText', {
+      svg,
+      name: asset.name,
+      x: centerX - (size / 2),
+      y: centerY - (size / 2),
+      scale,
+    });
+    return reply.layer;
+  },
+
+  /**
+   * Real thumbnail: rendered by a throwaway engine session
+   * (svg.importText → renderThumbnail), cached per asset.
+   */
+  async thumbnail(asset: AssetItem, maxSide = 96): Promise<string | null> {
+    const cached = thumbCache.get(asset.id);
+    if (cached) {
+      return cached;
+    }
+    if (asset.category === 'user') {
+      return null; // user images render through their own <Image> source
+    }
+    try {
+      const svg = await readBundledSvg(asset.source);
+      const {sessionId} = await Engine.engineCommands();
+      try {
+        await Engine.call(sessionId, 'doc.new', {name: 'thumb', width: 128, height: 128, background: 'transparent', resolution: 72});
+        await Engine.execute(sessionId, 'svg.importText', {svg, name: asset.name, x: 8, y: 8, scale: 112 / 512});
+        const thumb = await Engine.renderThumbnail(sessionId, maxSide);
+        thumbCache.set(asset.id, thumb);
+        return thumb;
+      } finally {
+        await Engine.closeSession(sessionId);
+      }
+    } catch {
+      return null;
+    }
+  },
+
+  /** Asset metadata card (category, tags, source, times used). */
+  async metadata(asset: AssetItem) {
+    const tags = await AssetLibrary.tags();
+    const favs = await AssetLibrary.favorites();
+    const rec = await AssetLibrary.recents();
+    return {
+      ...asset,
+      effectiveTags: [...asset.tags, ...(tags[asset.id] ?? [])],
+      favorite: favs.includes(asset.id),
+      lastUsedAt: rec.includes(asset.id) ? rec : null,
+      uses: rec.filter(r => r === asset.id).length,
+    };
   },
 };
 
 /** Read a bundled SVG from Android assets (fallback: inline map). */
 async function readBundledSvg(rel: string): Promise<string> {
   try {
-    const RNFS = require('react-native').NativeModules?.PhotoCraftAssets;
-    if (RNFS?.readAsset) {
-      return await RNFS.readAsset(`asset-library/${rel}`);
+    if (NativeAssets?.readAsset) {
+      return await NativeAssets.readAsset(`asset-library/${rel}`);
     }
   } catch {
     /* fall through to inline map */

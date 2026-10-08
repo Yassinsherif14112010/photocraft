@@ -74,6 +74,7 @@ pub mod retouch_cmds;
 pub mod select_extra_cmds;
 pub mod selection_cmds;
 pub mod slice_cmds;
+pub mod svg_cmds;
 pub mod smart_cmds;
 pub mod smartselect_cmds;
 pub mod snap;

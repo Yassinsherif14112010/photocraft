@@ -144,6 +144,30 @@ class PhotoCraftModule(reactContext: ReactApplicationContext) :
     // ---------------------------------------------------------- file I/O glue
 
     /**
+     * Read a file from app storage as base64 (staged inbox images for the
+     * AI panels). Paths outside filesDir/cacheDir are rejected.
+     */
+    @ReactMethod
+    fun readFileBase64(path: String, promise: Promise) {
+        engine.execute {
+            try {
+                val f = File(path)
+                val root = reactApplicationContext.filesDir.canonicalPath
+                val cache = reactApplicationContext.cacheDir.canonicalPath
+                val canonical = f.canonicalFile.absolutePath
+                require(canonical.startsWith(root) || canonical.startsWith(cache)) {
+                    "path escapes app storage"
+                }
+                val bytes = f.readBytes()
+                promise.resolve(Base64.encodeToString(bytes, Base64.NO_WRAP))
+            } catch (e: Exception) {
+                promise.reject("READ", e.message, e)
+            }
+        }
+    }
+
+
+    /**
      * Open a document from a local file (PSD/PSB/PNG/JPEG/WebP/SVG/.pcraft — anything
      * the engine imports). The engine parses it; warnings come back in the reply.
      */
