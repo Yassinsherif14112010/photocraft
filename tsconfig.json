@@ -1,0 +1,9 @@
+{
+  "extends": "@react-native/typescript-config/tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noUnusedLocals": false,
+    "types": ["react-native"]
+  },
+  "include": ["src", "index.js"]
+}

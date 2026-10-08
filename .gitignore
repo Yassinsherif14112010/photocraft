@@ -1,0 +1,12 @@
+node_modules/
+android/app/build/
+android/build/
+android/.gradle/
+android/app/src/main/jniLibs/**/*.so
+rust-core/target/
+ocr_models/
+birefnet_models/
+*.keystore
+!debug.keystore
+local.properties
+.DS_Store

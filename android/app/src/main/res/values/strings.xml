@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Photo Craft</string>
+    <string name="ocr_running">Running on-device OCR…</string>
+    <string name="bg_removal_running">Removing background on-device…</string>
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">#101014</item>
+        <item name="android:statusBarColor">#101014</item>
+        <item name="android:navigationBarColor">#101014</item>
+    </style>
+</resources>

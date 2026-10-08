@@ -1,0 +1,35 @@
+{
+  "name": "photo-craft-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Photo Craft Mobile — the PhotoCraft engine (Rust) on Android via React Native + JNI. Local OCR & background removal, no cloud.",
+  "scripts": {
+    "android": "react-native run-android",
+    "start": "react-native start",
+    "build:rust": "bash scripts/build-android.sh",
+    "fetch:models": "bash scripts/fetch-models.sh",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-native": "0.75.4",
+    "@react-native-async-storage/async-storage": "^2.0.0",
+    "@react-native-community/slider": "^4.5.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@babel/preset-env": "^7.25.3",
+    "@babel/runtime": "^7.25.0",
+    "@react-native/babel-preset": "0.75.4",
+    "@react-native/metro-config": "0.75.4",
+    "@react-native/typescript-config": "0.75.4",
+    "@types/react": "^18.2.6",
+    "typescript": "5.5.4"
+  },
+  "reactNative": {
+    "newArchEnabled": true
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

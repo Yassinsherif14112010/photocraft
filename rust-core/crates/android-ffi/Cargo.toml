@@ -1,0 +1,20 @@
+[package]
+name = "photocraft-android-ffi"
+description = "C ABI bridge between the PhotoCraft Rust engine and the Android JNI/C++ layer of Photo Craft Mobile"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "photocraft_android_ffi"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+photocraft-automation = { workspace = true }
+photocraft-codecs = { workspace = true }
+photocraft-compose = { workspace = true }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

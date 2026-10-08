@@ -1,0 +1,76 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/android-ffi",
+    "crates/algo",
+    "crates/automation",
+    "crates/cms",
+    "crates/codecs",
+    "crates/color",
+    "crates/compose",
+    "crates/doc",
+    "crates/engine",
+    "crates/format",
+    "crates/geom",
+    "crates/io",
+    "crates/ops",
+    "crates/paint",
+    "crates/plugins",
+    "crates/psd",
+    "crates/raster",
+    "crates/raw",
+    "crates/text",
+    "crates/vector",
+]
+default-members = ["crates/android-ffi"]
+
+[workspace.package]
+version = "0.3.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.95"
+
+[workspace.dependencies]
+# internal (vendored from PhotoCraft upstream)
+photocraft-geom = { path = "crates/geom" }
+photocraft-color = { path = "crates/color" }
+photocraft-cms = { path = "crates/cms" }
+photocraft-raster = { path = "crates/raster" }
+photocraft-doc = { path = "crates/doc" }
+photocraft-ops = { path = "crates/ops" }
+photocraft-psd = { path = "crates/psd" }
+photocraft-codecs = { path = "crates/codecs" }
+photocraft-raw = { path = "crates/raw" }
+photocraft-compose = { path = "crates/compose" }
+photocraft-paint = { path = "crates/paint" }
+photocraft-algo = { path = "crates/algo" }
+photocraft-io = { path = "crates/io" }
+photocraft-text = { path = "crates/text" }
+photocraft-vector = { path = "crates/vector" }
+photocraft-format = { path = "crates/format" }
+photocraft-automation = { path = "crates/automation" }
+photocraft-plugins = { path = "crates/plugins" }
+photocraft-engine = { path = "crates/engine" }
+photocraft-android-ffi = { path = "crates/android-ffi" }
+
+# external
+thiserror = "2"
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = "1"
+arc-swap = "1"
+bytemuck = { version = "1", features = ["derive"] }
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+image = { version = "0.25", default-features = false }
+log = "0.4"
+rayon = "1"
+getrandom = "0.3"
+
+[workspace.lints.rust]
+unsafe_code = "allow"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"
+panic = "unwind"
