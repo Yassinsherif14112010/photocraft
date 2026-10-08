@@ -8,16 +8,27 @@ import {useSyncExternalStore} from 'react';
 import {Engine, engineJson} from '../native/PhotoCraftEngine';
 import {blendFromLabel} from './types';
 import type {DocumentInfo, LayerSummary, Rect4} from './types';
+import {ProjectsStore, FILES_DIR} from './ProjectsStore';
 
 export interface EditorState {
   sessionId: number | null;
   doc: DocumentInfo | null;
+  /** Document/project display name (top bar). */
+  docName: string;
+  /** Where this project autosaves (real engine-written file). */
+  projectPath: string | null;
   layers: LayerSummary[];
   activeLayerId: number | null;
   canUndo: boolean;
   canRedo: boolean;
   busy: boolean;
   error: string | null;
+  /** Bumped after every mutating command — the canvas re-renders on change. */
+  canvasVersion: number;
+  /** Set when a background autosave just completed (UI can badge it). */
+  lastAutosaveAt: number | null;
+  /** Layer locks mirror (engine applies locks; inspect doesn't echo them). */
+  locks: Record<number, boolean>;
 }
 
 type Listener = () => void;
@@ -25,12 +36,17 @@ type Listener = () => void;
 let state: EditorState = {
   sessionId: null,
   doc: null,
+  docName: 'Untitled',
+  projectPath: null,
   layers: [],
   activeLayerId: null,
   canUndo: false,
   canRedo: false,
   busy: false,
   error: null,
+  canvasVersion: 0,
+  lastAutosaveAt: null,
+  locks: {},
 };
 
 const listeners = new Set<Listener>();
@@ -90,22 +106,35 @@ function convertLayer(raw: RawLayer): LayerSummary {
 }
 
 async function inspect(sessionId: number) {
-  const reply = await engineJson<RawLayer & {activeLayer: number | null; canUndo?: boolean; canRedo?: boolean}>(
-    Engine.call(sessionId, 'doc.inspect', {}),
-  );
+  const reply = await engineJson<
+    RawLayer & {
+      activeLayer: number | null;
+      canUndo?: boolean;
+      canRedo?: boolean;
+      name?: string;
+      width?: number;
+      height?: number;
+      resolution?: number;
+      layers?: RawLayer[];
+    }
+  >(Engine.call(sessionId, 'doc.inspect', {}));
   // The automation reply is the document object itself (inspect::document):
   // width/height/resolution at the top level plus the display-order layer tree.
   const doc: DocumentInfo = {
-    width: reply.width,
-    height: reply.height,
-    dpi: reply.resolution,
+    width: reply.width ?? 1080,
+    height: reply.height ?? 1080,
+    dpi: reply.resolution ?? 72,
     layerCount: reply.layers?.length ?? 0,
   };
   const layers = (reply.layers ?? []).map(convertLayer);
-  return {doc, layers, activeLayerId: reply.activeLayer ?? layers[0]?.id ?? null, canUndo: reply.canUndo ?? false, canRedo: reply.canRedo ?? false};
+  return {doc, layers, activeLayerId: reply.activeLayer ?? layers[0]?.id ?? null, canUndo: reply.canUndo ?? false, canRedo: reply.canRedo ?? false, docName: reply.name ?? state.docName};
 }
 
 // ---------------------------------------------------------------- session
+
+function safeName(name: string): string {
+  return name.replace(/[^\p{L}\p{N} _-]/gu, '').trim() || 'Untitled';
+}
 
 export async function newDocument(name: string, width: number, height: number, dpi = 72) {
   set({busy: true, error: null});
@@ -114,7 +143,8 @@ export async function newDocument(name: string, width: number, height: number, d
     // `doc.new` runs the engine's `file.new` (`resolution` is the DPI field).
     await engineJson(Engine.call(sessionId, 'doc.new', {name, width, height, resolution: dpi, background: 'white'}));
     const info = await inspect(sessionId);
-    set({sessionId, busy: false, error: null, ...(info as object)});
+    const projectPath = `${FILES_DIR}/projects/${safeName(name)}-${Date.now()}.pcraft`;
+    set({sessionId, busy: false, error: null, projectPath, canvasVersion: 0, ...(info as object)});
   } catch (e: any) {
     set({busy: false, error: String(e?.message ?? e)});
   }
@@ -126,7 +156,8 @@ export async function openDocument(path: string) {
     const {sessionId} = await Engine.engineCommands();
     await engineJson(Engine.openDocument(sessionId, path));
     const info = await inspect(sessionId);
-    set({sessionId, busy: false, error: null, ...(info as object)});
+    set({sessionId, busy: false, error: null, projectPath: path, canvasVersion: 0, ...(info as object)});
+    await ProjectsStore.touch(path);
   } catch (e: any) {
     set({busy: false, error: String(e?.message ?? e)});
   }
@@ -137,7 +168,7 @@ export async function closeSession() {
   if (sessionId != null) {
     await Engine.closeSession(sessionId);
   }
-  set({sessionId: null, doc: null, layers: [], activeLayerId: null, canUndo: false, canRedo: false});
+  set({sessionId: null, doc: null, docName: 'Untitled', projectPath: null, layers: [], activeLayerId: null, canUndo: false, canRedo: false});
 }
 
 export async function refresh() {
@@ -151,7 +182,32 @@ export async function refresh() {
 
 // ------------------------------------------------------------- mutations
 
-/** Run an engine command; refreshes the layer tree and marks canvas dirty. */
+// Debounced auto-save: 1.4s after the last mutating command the document is
+// written to its real project file and the Projects index is updated.
+let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleAutosave() {
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer);
+  }
+  autosaveTimer = setTimeout(() => {
+    autosaveTimer = null;
+    autoSaveNow().catch(() => {});
+  }, 1400);
+}
+
+async function autoSaveNow() {
+  const {sessionId, projectPath, docName, doc} = state;
+  if (sessionId == null || !projectPath || !doc) {
+    return;
+  }
+  const reply = await Engine.saveDocument(sessionId, projectPath, 'pcraft', 100);
+  if (!(reply as {error?: string}).error) {
+    await ProjectsStore.upsert({name: docName, path: projectPath, width: doc.width, height: doc.height});
+    set({lastAutosaveAt: Date.now()});
+  }
+}
+
+/** Run an engine command; refreshes the layer tree, bumps canvas + autosaves. */
 export async function runCommand(command: string, params: object = {}) {
   const {sessionId} = state;
   if (sessionId == null) {
@@ -165,6 +221,8 @@ export async function runCommand(command: string, params: object = {}) {
     }
     const info = await inspect(sessionId);
     set(info as object);
+    set({canvasVersion: state.canvasVersion + 1});
+    scheduleAutosave();
     return JSON.parse(reply.result ?? '{}');
   } finally {
     set({busy: false});
@@ -190,6 +248,8 @@ export async function runBatch(steps: Array<{command: string; params?: object}>)
     }
     const info = await inspect(sessionId);
     set(info as object);
+    set({canvasVersion: state.canvasVersion + 1});
+    scheduleAutosave();
     return parsed;
   } finally {
     set({busy: false});
@@ -214,6 +274,47 @@ export async function redo() {
   await runCommand('edit.redo', {});
 }
 
+/** Rename the document (top bar + projects index). */
+export async function renameDocument(name: string) {
+  set({docName: name});
+  const {sessionId, projectPath, doc} = state;
+  if (sessionId != null && projectPath && doc) {
+    await ProjectsStore.upsert({name, path: projectPath, width: doc.width, height: doc.height});
+  }
+}
+
+/** Explicit save (top bar): writes the project file immediately. */
+export async function saveNow(): Promise<void> {
+  const {sessionId, projectPath, docName, doc} = state;
+  if (sessionId == null || !projectPath || !doc) {
+    throw new Error('no document open');
+  }
+  const reply = await Engine.saveDocument(sessionId, projectPath, 'pcraft', 100);
+  if ((reply as {error?: string}).error) {
+    throw new Error((reply as {error?: string}).error);
+  }
+  await ProjectsStore.upsert({name: docName, path: projectPath, width: doc.width, height: doc.height});
+  set({lastAutosaveAt: Date.now()});
+}
+
+/** Canvas tap → real engine hit-test (topmost layer with pixels there). */
+export async function pickLayerAt(x: number, y: number): Promise<number | null> {
+  const {sessionId} = state;
+  if (sessionId == null) {
+    return null;
+  }
+  const reply = await engineJson<{layer: number | null}>(
+    Engine.execute(sessionId, 'layer.pickAt', {x: Math.round(x), y: Math.round(y), select: false}),
+  );
+  return reply.layer ?? null;
+}
+
+/** Lock/unlock a layer (real engine locks block transforms + pixels). */
+export async function setLayerLock(id: number, locked: boolean) {
+  await runCommand('layer.setProps', {layer: id, locked});
+  set({locks: {...state.locks, [id]: locked}});
+}
+
 export const Editor = {
   newDocument,
   openDocument,
@@ -224,4 +325,8 @@ export const Editor = {
   refresh,
   undo,
   redo,
+  saveNow,
+  renameDocument,
+  pickLayerAt,
+  setLayerLock,
 };

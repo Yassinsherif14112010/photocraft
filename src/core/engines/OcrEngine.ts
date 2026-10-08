@@ -7,7 +7,7 @@
  * persist with the document and round-trip through PSD annotations).
  * No cloud, no paid API.
  */
-import {Ocr, engineJson} from '../../native/PhotoCraftEngine';
+import {Ocr} from '../../native/PhotoCraftEngine';
 import type {OcrBoxResult} from '../../native/PhotoCraftEngine';
 import {Editor} from '../DocumentStore';
 import {addFromOcr} from './TextStudio';
@@ -55,8 +55,11 @@ export const OcrEngine = {
    * (right-to-left for Arabic lines — RTL-aware reading order).
    */
   async detectAndRecognize(imageBase64: string): Promise<OcrHit[]> {
-    const reply = await engineJson<OcrBoxResult>(Ocr.detectAndRecognize(imageBase64));
-    const hits: OcrHit[] = (reply.boxes ?? []).map(b => ({
+    // The native module replies `{boxes: "<json array>"}` (string-encoded).
+    const reply = await Ocr.detectAndRecognize(imageBase64);
+    const parsed = typeof reply.boxes === 'string' ? JSON.parse(reply.boxes ?? '[]') : ((reply as any).boxes ?? []);
+    const boxes: OcrBoxResult['boxes'] = Array.isArray(parsed) ? parsed : [];
+    const hits: OcrHit[] = boxes.map(b => ({
       text: b.text,
       confidence: b.confidence,
       x: b.x,

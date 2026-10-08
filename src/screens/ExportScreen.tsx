@@ -1,127 +1,284 @@
-/** Export screen — format/quality/scale/preset + real engine export. */
-import React, {useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Switch, Text, View} from 'react-native';
-import Slider from '@react-native-community/slider';
-import {theme} from '../theme';
+/**
+ * Export Center — the professional export system over the engine's real
+ * writers: PNG / JPG / WEBP / PSD / PSB (+ .pcraft projects). Includes named
+ * presets, batch export across checked formats, quality/compression controls,
+ * transparency (real background-visibility toggle in ExportCenter), metadata
+ * (title/author/description/keywords/copyright → file.fileInfo), an honest
+ * estimated-size hint, and a persisted export history.
+ */
+import React, {useEffect, useState} from 'react';
+import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useTheme} from '../theme';
 import {t} from '../i18n';
 import {useEditor} from '../core/DocumentStore';
 import {ExportCenter, QUALITY_PRESETS} from '../core/engines/ExportCenter';
-import type {ExportFormat} from '../core/engines/ExportCenter';
-import {SMART_PRESETS} from '../core/types';
+import type {ExportFormat, ExportOptions} from '../core/engines/ExportCenter';
+import {EXPORT_PROFILES} from '../core/engines/ExportCenter';
+import {ExportHistory, estimateBytes, formatBytes} from '../core/ExportHistory';
+import type {ExportHistoryItem} from '../core/ExportHistory';
+import {
+  Card,
+  Chip,
+  PrimaryButton,
+  SectionLabel,
+  SliderRow,
+  SwitchRow,
+  TextInputRow,
+  TopBar,
+  Badge,
+  EmptyState,
+  showToast,
+} from '../components/ui';
 import type {Route} from '../App';
 
 const FORMATS: ExportFormat[] = ['png', 'jpg', 'webp', 'psd', 'psb', 'pcraft'];
 
 export function ExportScreen({onNavigate}: {onNavigate: (r: Route) => void}) {
+  const c = useTheme();
   const s = t();
+  const insets = useSafeAreaInsets();
   const st = useEditor();
+
   const [format, setFormat] = useState<ExportFormat>('png');
   const [quality, setQuality] = useState(92);
   const [transparent, setTransparent] = useState(true);
   const [scalePct, setScalePct] = useState(100);
-  const [preset, setPreset] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [batchFormats, setBatchFormats] = useState<Set<ExportFormat>>(new Set(['png']));
+  const [batchMode, setBatchMode] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [history, setHistory] = useState<ExportHistoryItem[]>([]);
+
+  const [meta, setMeta] = useState<{title: string; author: string; description: string; keywords: string; copyright: string}>({
+    title: '', author: '', description: '', keywords: '', copyright: '',
+  });
+  const [metaOpen, setMetaOpen] = useState(false);
+
+  useEffect(() => {
+    ExportHistory.list().then(setHistory);
+    if (st.sessionId != null) {
+      ExportCenter.getMetadata(st.sessionId)
+        .then((m: any) => {
+          setMeta(prev => ({
+            ...prev,
+            title: m?.title ? String(m.title) : prev.title,
+            author: m?.author ? String(m.author) : prev.author,
+            description: m?.description ? String(m.description) : prev.description,
+            keywords: Array.isArray(m?.keywords) ? m.keywords.join(', ') : prev.keywords,
+            copyright: m?.copyright ? String(m.copyright) : prev.copyright,
+          }));
+        })
+        .catch(() => {});
+    }
+  }, [st.sessionId]);
+
+  const buildOpts = (f: ExportFormat): ExportOptions => ({
+    format: f,
+    quality,
+    transparent: transparent && (f === 'png' || f === 'webp'),
+    scalePct,
+  });
+
+  const estimate = st.doc ? estimateBytes(format, st.doc.width, st.doc.height, scalePct, quality) : 0;
 
   const run = async () => {
-    if (!st.sessionId) {
+    if (st.sessionId == null) {
       return;
     }
-    setErr(null);
+    setBusy(true);
     try {
-      const res = await ExportCenter.export(st.sessionId, {
-        format,
-        quality,
-        transparent,
-        scalePct,
-        socialPreset: SMART_PRESETS.find(p => p.id === preset) ?? null,
-      });
-      setDone(res.path);
+      if (metaOpen || meta.title || meta.author) {
+        await ExportCenter.setMetadata(st.sessionId, {
+          title: meta.title || undefined,
+          author: meta.author || undefined,
+          description: meta.description || undefined,
+          keywords: meta.keywords ? meta.keywords.split(',').map(k => k.trim()).filter(Boolean) : undefined,
+          copyright: meta.copyright || undefined,
+        });
+      }
+      const jobs = batchMode ? [...batchFormats] : [format];
+      const results = [];
+      for (const f of jobs) {
+        results.push(await ExportCenter.export(st.sessionId, buildOpts(f)));
+      }
+      for (const r of results) {
+        await ExportHistory.add({
+          path: r.path,
+          format: r.path.split('.').pop() ?? 'bin',
+          bytes: r.bytes,
+          at: Date.now(),
+          docName: st.docName,
+          width: st.doc?.width ?? 0,
+          height: st.doc?.height ?? 0,
+        });
+      }
+      setHistory(await ExportHistory.list());
+      showToast(batchMode ? `${s.exportScreen.batchDone} (${results.length})` : s.exportScreen.exported);
     } catch (e: any) {
-      setErr(String(e?.message ?? e));
+      showToast(String(e?.message ?? e), 'error');
+    } finally {
+      setBusy(false);
     }
   };
 
   const flat = format === 'png' || format === 'jpg' || format === 'webp';
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.content}>
-      <Text style={styles.h1}>{s.exportScreen.title}</Text>
+    <View style={[styles.root, {backgroundColor: c.bg, paddingTop: insets.top}]}>
+      <TopBar title={s.exportScreen.title} subtitle={s.exportScreen.subtitle} onBack={() => onNavigate('editor')} />
 
-      <Text style={styles.label}>{s.exportScreen.format}</Text>
-      <View style={styles.row}>
-        {FORMATS.map(f => (
-          <Pressable key={f} style={[styles.chip, format === f && styles.chipOn]} onPress={() => setFormat(f)}>
-            <Text style={[styles.chipText, format === f && styles.chipTextOn]}>{f.toUpperCase()}</Text>
+      <ScrollView contentContainerStyle={[styles.content, {paddingBottom: insets.bottom + 20}]}>
+        {/* presets */}
+        <SectionLabel text={s.exportScreen.presets} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8}}>
+          {EXPORT_PROFILES.map(p => (
+            <Chip
+              key={p.id}
+              label={p.nameAr}
+              onPress={() => {
+                setFormat(p.opts.format);
+                setQuality(p.opts.quality ?? 92);
+                setTransparent(p.opts.transparent ?? false);
+                setScalePct(p.opts.scalePct ?? 100);
+                setBatchMode(false);
+              }}
+            />
+          ))}
+        </ScrollView>
+
+        {/* batch toggle */}
+        <SwitchRow label={s.exportScreen.batch} value={batchMode} onChange={setBatchMode} />
+        {batchMode && (
+          <>
+            <Text style={{color: c.textFaint, fontSize: 11}}>{s.exportScreen.batchHint}</Text>
+            <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 6}}>
+              {FORMATS.map(f => (
+                <Chip
+                  key={f}
+                  label={f.toUpperCase()}
+                  small
+                  active={batchFormats.has(f)}
+                  onPress={() =>
+                    setBatchFormats(prev => {
+                      const next = new Set(prev);
+                      if (next.has(f)) {
+                        next.delete(f);
+                      } else {
+                        next.add(f);
+                      }
+                      return next;
+                    })
+                  }
+                />
+              ))}
+            </View>
+          </>
+        )}
+
+        {!batchMode && (
+          <>
+            {/* format */}
+            <SectionLabel text={s.exportScreen.format} />
+            <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 8}}>
+              {FORMATS.map(f => (
+                <Chip key={f} label={f.toUpperCase()} active={format === f} onPress={() => setFormat(f)} />
+              ))}
+            </View>
+
+            {flat && (
+              <>
+                <SectionLabel text={s.exportScreen.quality} />
+                <View style={{flexDirection: 'row', gap: 8}}>
+                  {QUALITY_PRESETS.map(q => (
+                    <Chip key={q.value} label={q.labelAr} active={quality === q.value} onPress={() => setQuality(q.value)} />
+                  ))}
+                </View>
+                {(format === 'png' || format === 'webp') && (
+                  <SwitchRow label={s.exportScreen.transparent} value={transparent} onChange={setTransparent} />
+                )}
+              </>
+            )}
+
+            <SliderRow
+              label={s.exportScreen.scale}
+              value={scalePct}
+              min={10}
+              max={400}
+              step={5}
+              onChange={setScalePct}
+              format={v => `${Math.round(v)}%`}
+            />
+
+            {/* estimate */}
+            <Card style={styles.estimateCard}>
+              <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+                <Text style={{color: c.textDim, fontSize: 12.5, fontWeight: '700'}}>{s.exportScreen.estimate}</Text>
+                <Badge text="≈" tone="warn" />
+              </View>
+              <Text style={{color: c.text, fontSize: 22, fontWeight: '900'}}>{formatBytes(estimate)}</Text>
+              <Text style={{color: c.textFaint, fontSize: 10.5}}>{s.exportScreen.estimateHint}</Text>
+            </Card>
+          </>
+        )}
+
+        {/* metadata */}
+        <Card>
+          <Pressable onPress={() => setMetaOpen(!metaOpen)} style={styles.metaHead}>
+            <SectionLabel text={s.exportScreen.metadata} />
+            <Text style={{color: c.accent2, fontWeight: '800'}}>{metaOpen ? '−' : '+'}</Text>
           </Pressable>
-        ))}
-      </View>
-
-      {flat && (
-        <>
-          <Text style={styles.label}>{s.exportScreen.quality}</Text>
-          <View style={styles.row}>
-            {QUALITY_PRESETS.map(q => (
-              <Pressable key={q.value} style={[styles.chip, quality === q.value && styles.chipOn]} onPress={() => setQuality(q.value)}>
-                <Text style={[styles.chipText, quality === q.value && styles.chipTextOn]}>{q.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-          {(format === 'png' || format === 'webp') && (
-            <View style={[styles.row, styles.space]}>
-              <Text style={styles.label}>{s.exportScreen.transparent}</Text>
-              <Switch value={transparent} onValueChange={setTransparent} trackColor={{true: theme.accent}} />
+          <Text style={{color: c.textFaint, fontSize: 11, marginTop: 4}}>{s.exportScreen.metadataHint}</Text>
+          {metaOpen && (
+            <View style={{gap: 10, marginTop: 10}}>
+              <TextInputRow value={meta.title} onChange={v => setMeta({...meta, title: v})} placeholder={s.exportScreen.titleField} />
+              <TextInputRow value={meta.author} onChange={v => setMeta({...meta, author: v})} placeholder={s.exportScreen.author} />
+              <TextInputRow value={meta.description} onChange={v => setMeta({...meta, description: v})} placeholder={s.exportScreen.description} multiline />
+              <TextInputRow value={meta.keywords} onChange={v => setMeta({...meta, keywords: v})} placeholder={s.exportScreen.keywords} />
+              <TextInputRow value={meta.copyright} onChange={v => setMeta({...meta, copyright: v})} placeholder={s.exportScreen.copyright} />
             </View>
           )}
-        </>
-      )}
+        </Card>
 
-      <Text style={styles.label}>{s.exportScreen.scale}: {scalePct}%</Text>
-      <Slider minimumValue={10} maximumValue={200} step={5} value={scalePct} onValueChange={setScalePct} minimumTrackTintColor={theme.accent} />
+        <PrimaryButton label={busy ? s.common.busy : batchMode ? `${s.exportScreen.save} ×${batchFormats.size}` : s.exportScreen.save} onPress={run} disabled={busy} />
 
-      <Text style={styles.label}>{s.smart.title}</Text>
-      <View style={[styles.row, styles.wrap]}>
-        {SMART_PRESETS.map(p => (
-          <Pressable
-            key={p.id}
-            style={[styles.chip, preset === p.id && styles.chipOn]}
-            onPress={() => setPreset(preset === p.id ? null : p.id)}>
-            <Text style={[styles.chipText, preset === p.id && styles.chipTextOn]}>
-              {p.labelAr} · {p.width}×{p.height}
-            </Text>
-          </Pressable>
+        {/* history */}
+        <SectionLabel
+          text={s.exportScreen.history}
+          action={
+            history.length > 0 ? (
+              <Pressable onPress={() => ExportHistory.clear().then(() => setHistory([]))}>
+                <Text style={{color: c.danger, fontSize: 12, fontWeight: '700'}}>{s.common.delete}</Text>
+              </Pressable>
+            ) : undefined
+          }
+        />
+        {history.length === 0 && <EmptyState glyph="⤴" title={s.exportScreen.historyEmpty} />}
+        {history.map(h => (
+          <Card key={h.id} style={styles.historyRow}>
+            <Badge text={h.format.toUpperCase()} tone="accent" />
+            <View style={{flex: 1, gap: 2}}>
+              <Text style={{color: c.text, fontSize: 12.5, fontWeight: '700'}} numberOfLines={1}>
+                {h.docName} · {h.width}×{h.height}
+              </Text>
+              <Text style={{color: c.textFaint, fontSize: 10.5}} numberOfLines={1}>
+                {h.path}
+              </Text>
+            </View>
+            <View style={{alignItems: 'flex-end', gap: 2}}>
+              <Text style={{color: c.textDim, fontSize: 11, fontWeight: '700'}}>{formatBytes(h.bytes)}</Text>
+              <Text style={{color: c.textFaint, fontSize: 10}}>{new Date(h.at).toLocaleTimeString()}</Text>
+            </View>
+          </Card>
         ))}
-      </View>
-
-      {done && <Text style={styles.done}>{s.exportScreen.done}: {done}</Text>}
-      {err && <Text style={styles.err}>{err}</Text>}
-
-      <Pressable style={styles.primary} onPress={run}>
-        <Text style={styles.primaryText}>{s.exportScreen.save}</Text>
-      </Pressable>
-      <Pressable style={styles.back} onPress={() => onNavigate('editor')}>
-        <Text style={styles.backText}>← {s.editor.layers}</Text>
-      </Pressable>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {flex: 1, backgroundColor: theme.bg},
-  content: {padding: 20, gap: 12},
-  h1: {color: theme.text, fontSize: 26, fontWeight: '800'},
-  label: {color: theme.textDim, fontSize: 13, fontWeight: '700'},
-  row: {flexDirection: 'row', gap: 8, alignItems: 'center'},
-  wrap: {flexWrap: 'wrap'},
-  space: {justifyContent: 'space-between'},
-  chip: {paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: theme.surface2, borderWidth: 1, borderColor: theme.border},
-  chipOn: {backgroundColor: theme.accent, borderColor: theme.accent},
-  chipText: {color: theme.textDim, fontSize: 12, fontWeight: '600'},
-  chipTextOn: {color: '#fff'},
-  primary: {backgroundColor: theme.accent, borderRadius: 12, alignItems: 'center', paddingVertical: 14, marginTop: 8},
-  primaryText: {color: '#fff', fontWeight: '800', fontSize: 16},
-  back: {alignItems: 'center', padding: 8},
-  backText: {color: theme.accent2, fontWeight: '600'},
-  done: {color: theme.success, fontSize: 12},
-  err: {color: theme.danger, fontSize: 12},
+  root: {flex: 1},
+  content: {padding: 16, gap: 14},
+  estimateCard: {gap: 4, alignItems: 'flex-start'},
+  metaHead: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%'},
+  historyRow: {flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10},
 });

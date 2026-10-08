@@ -169,4 +169,5 @@ export const SMART_PRESETS: SmartPreset[] = [
   {id: 'yt-thumb', label: 'YouTube Thumbnail', labelAr: 'يوتيوب — صورة مصغرة', width: 1280, height: 720, safeAreaPct: 8},
   {id: 'pin', label: 'Pinterest Pin', labelAr: 'بنترست', width: 1000, height: 1500, safeAreaPct: 8},
   {id: 'li-post', label: 'LinkedIn Post', labelAr: 'لينكدإن — منشور', width: 1200, height: 1200, safeAreaPct: 8},
+  {id: 'snap', label: 'Snapchat Spotlight', labelAr: 'سناب شات — سبوتلايت', width: 1080, height: 1920, safeAreaPct: 14},
 ];

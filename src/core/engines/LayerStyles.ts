@@ -10,7 +10,8 @@
  */
 import {Editor, getState} from '../DocumentStore';
 import {Engine, engineJson} from '../../native/PhotoCraftEngine';
-import type {EffectKind, STYLE_CONTOURS} from '../types';
+import type {EffectKind} from '../types';
+import {STYLE_CONTOURS} from '../types';
 
 export interface GradientOverlayParams {
   from?: string; // "#rrggbb"
@@ -238,13 +239,13 @@ export const LayerStyles = {
 
   /** Validate a spec before sending it to the engine (honest client checks). */
   validate(effect: EffectSpec): string | null {
-    if (!(EFFECT_KIND_SET as Set<string>).has(effect.kind)) {
+    if (!(EFFECT_KIND_SET as readonly string[]).includes(effect.kind)) {
       return `unknown effect kind "${effect.kind}"`;
     }
     if (effect.opacity !== undefined && (effect.opacity < 0 || effect.opacity > 100)) {
       return 'opacity must be 0..100';
     }
-    if (effect.contour && !(CONTOUR_SET as Set<string>).has(effect.contour)) {
+    if (effect.contour && !CONTOUR_SET.includes(effect.contour)) {
       return `unknown contour "${effect.contour}"`;
     }
     if (effect.kind === 'patternOverlay' && !effect.pattern?.pattern) {
@@ -276,7 +277,7 @@ export const LayerStyles = {
   },
 };
 
-const EFFECT_KIND_SET = [
+const EFFECT_KIND_SET: readonly string[] = [
   'dropShadow', 'innerShadow', 'outerGlow', 'innerGlow', 'stroke',
   'colorOverlay', 'gradientOverlay', 'patternOverlay', 'satin', 'bevelEmboss',
 ];

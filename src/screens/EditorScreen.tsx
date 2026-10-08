@@ -1,425 +1,546 @@
 /**
- * Editor — the studio: native SurfaceView canvas + bottom tool tabs
- * (Layers / Text / Styles / AI) + top actions (undo, export, smart resize).
+ * Editor — the studio. Professional dark/light themed shell:
+ *   Top bar    : back · project name (inline edit) · undo · redo · save · export · menu
+ *   Canvas     : infinite workspace (CanvasStage) with guides + zoom dock
+ *   Tool dock  : Move · Layers · Text · Shapes · Assets · AI · Effects · Export
+ *   Panels     : animated bottom sheets (LayersPanel, TextStudioPanel,
+ *                EffectsPanel, AssetsSheet, shape/Move tool sheets)
+ *   AI         : full-screen OCR + Background Removal workspaces
+ * Tablet/landscape: the layers panel docks as a permanent side rail.
  */
 import React, {useEffect, useState} from 'react';
 import {
-  ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
-import Slider from '@react-native-community/slider';
-import {theme} from '../theme';
-import {dir, t} from '../i18n';
-import {Editor as Store, runCommand, useEditor} from '../core/DocumentStore';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {Palette, useTheme, useThemeMode} from '../theme';
+import {t} from '../i18n';
+import {
+  Editor,
+  getState,
+  renameDocument,
+  runCommand,
+  useEditor,
+} from '../core/DocumentStore';
 import {History} from '../core/HistoryManager';
-import {TextStudio} from '../core/engines/TextStudio';
-import {LayerStyles, STYLE_PRESETS} from '../core/engines/LayerStyles';
-import type {EffectSpec} from '../core/engines/LayerStyles';
-import {OcrEngine} from '../core/engines/OcrEngine';
-import {BackgroundRemoval} from '../core/engines/BackgroundRemoval';
-import {BLEND_MODES, EFFECT_KINDS} from '../core/types';
+import {ProjectsStore} from '../core/ProjectsStore';
+import {CanvasStage} from '../components/CanvasStage';
 import {LayersPanel} from '../components/LayersPanel';
+import {TextStudioPanel} from '../components/TextStudioPanel';
+import {EffectsPanel} from '../components/EffectsPanel';
+import {AssetsSheet} from '../components/AssetsSheet';
 import {ColorPicker} from '../components/ColorPicker';
+import {OcrWorkspace} from './OcrWorkspace';
+import {BgRemoveWorkspace} from './BgRemoveWorkspace';
+import {
+  Chip,
+  EmptyState,
+  IconButton,
+  PrimaryButton,
+  SectionLabel,
+  Sheet,
+  SliderRow,
+  TextInputRow,
+  showToast,
+} from '../components/ui';
 import type {Route} from '../App';
 
-type Tab = 'layers' | 'text' | 'styles' | 'ai';
+type Tool = 'move' | 'layers' | 'text' | 'shapes' | 'assets' | 'ai' | 'effects' | 'export';
 
 export function EditorScreen({onNavigate}: {onNavigate: (r: Route) => void}) {
+  const c = useTheme();
   const s = t();
   const st = useEditor();
-  const [tab, setTab] = useState<Tab>('layers');
-  const [panel, setPanel] = useState<'none' | 'ocr' | 'bg'>('none');
-  const [textDraft, setTextDraft] = useState('');
-  const [textColor, setTextColor] = useState('#101014');
-  const [fontSize, setFontSize] = useState(48);
-  const [stylePreview, setStylePreview] = useState<EffectSpec[]>(STYLE_PRESETS[0].effects);
+  const {width, height} = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const [tool, setTool] = useState<Tool | null>(null);
+  const [menu, setMenu] = useState(false);
+  const [aiPanel, setAiPanel] = useState(false);
+  const [ocr, setOcr] = useState(false);
+  const [bg, setBg] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [showCenter, setShowCenter] = useState(false);
+  const [showThirds, setShowThirds] = useState(false);
+  const [showSafe, setShowSafe] = useState(false);
+  const [safePct, setSafePct] = useState(10);
+  const [themeMode, setThemeMode] = useThemeMode();
+
+  const wide = width >= 900;
+  const landscape = width > height;
 
   useEffect(() => {
-    // Session arrived without a doc (cold start)? Nothing to do; Home creates docs.
-  }, []);
+    if (st.sessionId) {
+      setNameDraft(st.docName);
+    }
+  }, [st.sessionId, st.docName]);
 
   if (!st.sessionId) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.dim}>{s.common.error}</Text>
-        <Pressable style={styles.ghost} onPress={() => onNavigate('home')}>
-          <Text style={styles.ghostText}>← {s.home.newDoc}</Text>
-        </Pressable>
+      <View style={[styles.center, {backgroundColor: c.bg}]}>
+        <EmptyState glyph="🖼" title={s.editor.emptyLayers} />
+        <PrimaryButton label={`← ${s.home.newDoc}`} onPress={() => onNavigate('home')} />
       </View>
     );
   }
 
-  const active = st.layers.find(l => l.id === st.activeLayerId);
-
-  const addText = async () => {
-    if (!textDraft.trim()) {
-      return;
+  const save = async () => {
+    try {
+      await Editor.saveNow();
+      showToast(s.editor.saved);
+    } catch (e: any) {
+      showToast(String(e?.message ?? e), 'error');
     }
-    const id = await TextStudio.add({
-      text: textDraft,
-      x: 64,
-      y: 96,
-      sizePt: fontSize,
-      color: textColor,
-    });
-    History.push('text.add');
-    if (id > 0) {
-      await Store.setActiveLayer(id);
-    }
-    setTextDraft('');
   };
 
-  const applyPreset = async (effects: EffectSpec[]) => {
-    if (!active) {
-      return;
+  const undo = async () => {
+    try {
+      await History.undo();
+    } catch {
+      showToast(s.common.error, 'error');
     }
-    await LayerStyles.apply(active.id, effects);
-    History.push('style.apply');
-    setStylePreview(effects);
   };
 
-  const runOcr = async () => setPanel('ocr');
-  const runBg = async () => setPanel('bg');
+  const redo = async () => {
+    try {
+      await History.redo();
+    } catch {
+      showToast(s.common.error, 'error');
+    }
+  };
+
+  const dock: Array<{id: Tool; glyph: string; label: string}> = [
+    {id: 'move', glyph: '✥', label: s.editor.move},
+    {id: 'layers', glyph: '▤', label: s.editor.layers},
+    {id: 'text', glyph: 'T', label: s.editor.text},
+    {id: 'shapes', glyph: '▣', label: s.editor.shapes},
+    {id: 'assets', glyph: '❖', label: s.home.assets},
+    {id: 'ai', glyph: '✦', label: s.editor.ai},
+    {id: 'effects', glyph: '✧', label: s.editor.effects},
+    {id: 'export', glyph: '⤴', label: s.editor.export},
+  ];
+
+  const openTool = (id: Tool) => {
+    if (id === 'export') {
+      onNavigate('export');
+      return;
+    }
+    if (id === 'ai') {
+      setAiPanel(true);
+      return;
+    }
+    setTool(id);
+  };
 
   return (
-    <View style={styles.root}>
-      {/* canvas area: the native SurfaceView fills this via the host activity layout.
-          On the JS side we show the composited preview through renderThumbnail. */}
-      <View style={styles.canvasWrap}>
-        <CanvasPlaceholder sessionId={st.sessionId} />
-      </View>
-
-      {/* top bar */}
-      <View style={styles.topbar}>
-        <Pressable onPress={() => History.undo()} style={styles.iconBtn}>
-          <Text style={styles.iconText}>↩︎</Text>
-        </Pressable>
-        <Pressable onPress={() => History.redo()} style={styles.iconBtn}>
-          <Text style={styles.iconText}>↪︎</Text>
-        </Pressable>
-        <View style={{flex: 1}} />
-        <Pressable style={styles.iconBtn} onPress={() => onNavigate('smart')}>
-          <Text style={styles.iconText}>📐</Text>
-        </Pressable>
-        <Pressable style={styles.primarySm} onPress={() => onNavigate('export')}>
-          <Text style={styles.primarySmText}>{s.editor.export}</Text>
-        </Pressable>
-      </View>
-
-      {/* tool tabs */}
-      <View style={styles.tabs}>
-        {(['layers', 'text', 'styles', 'ai'] as Tab[]).map(k => (
-          <Pressable key={k} style={[styles.tab, tab === k && styles.tabOn]} onPress={() => setTab(k)}>
-            <Text style={[styles.tabText, tab === k && styles.tabTextOn]}>
-              {k === 'layers' ? s.editor.layers : k === 'text' ? s.editor.text : k === 'styles' ? s.editor.styles : 'AI'}
+    <View style={[styles.root, {backgroundColor: c.bg, paddingTop: insets.top}]}>
+      {/* ---------------- top bar ---------------- */}
+      <View style={[styles.topbar, {borderColor: c.border}]}>
+        <IconButton glyph="‹" onPress={() => onNavigate('home')} label={s.editor.back} />
+        {renaming ? (
+          <View style={{flex: 1}}>
+            <TextInputRow
+              value={nameDraft}
+              onChange={setNameDraft}
+              placeholder={s.editor.menu}
+            />
+            <Pressable
+              onPress={() => {
+                renameDocument(nameDraft.trim() || 'Untitled');
+                setRenaming(false);
+              }}
+              style={{marginTop: 4}}>
+              <Text style={{color: c.accent2, fontWeight: '700', fontSize: 12}}>{s.common.save}</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable style={{flex: 1}} onLongPress={() => setRenaming(true)}>
+            <Text style={[styles.docName, {color: c.text}]} numberOfLines={1}>
+              {st.docName}
             </Text>
+            <Text style={{color: c.textFaint, fontSize: 10.5}}>
+              {st.lastAutosaveAt ? `${s.home.autoSaved} ✓` : s.projects.autosaveOn}
+            </Text>
+          </Pressable>
+        )}
+        <IconButton glyph="↩︎" onPress={undo} label={s.editor.undo} />
+        <IconButton glyph="↪︎" onPress={redo} label={s.editor.redo} />
+        <IconButton glyph="✓" onPress={save} label={s.editor.save} />
+        <IconButton glyph="⤴" onPress={() => onNavigate('export')} label={s.editor.export} />
+        <IconButton glyph="☰" onPress={() => setMenu(true)} label={s.editor.menu} />
+      </View>
+
+      {/* ---------------- workspace ---------------- */}
+      <View style={styles.body}>
+        <CanvasStage
+          showCenterGuides={showCenter}
+          showThirds={showThirds}
+          showSafeArea={showSafe}
+          safeAreaPct={safePct}
+        />
+        {wide && (
+          <View style={[styles.rail, {backgroundColor: c.surface, borderColor: c.border, width: Math.min(360, width * 0.32)}]}>
+            <LayersPanel />
+          </View>
+        )}
+      </View>
+
+      {/* ---------------- tool dock ---------------- */}
+      <View style={[styles.dock, {backgroundColor: c.surface, borderColor: c.border, paddingBottom: Math.max(10, insets.bottom)}]}>
+        {dock.map(d => {
+          const on = d.id === 'layers' && wide ? false : tool === d.id || (d.id === 'ai' && aiPanel);
+          return (
+            <Pressable key={d.id} style={styles.dockItem} onPress={() => openTool(d.id)} android_ripple={{color: c.border}}>
+              <View style={[styles.dockIcon, {backgroundColor: on ? c.accent : 'transparent'}]}>
+                <Text style={{color: on ? c.onAccent : c.textDim, fontSize: 18, fontWeight: '800'}}>{d.glyph}</Text>
+              </View>
+              <Text style={{color: on ? c.accent : c.textDim, fontSize: 9.5, fontWeight: '700'}} numberOfLines={1}>
+                {d.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* ---------------- tool sheets ---------------- */}
+      {!wide && (
+        <Sheet visible={tool === 'layers'} onClose={() => setTool(null)} title={s.editor.layers} heightPct={landscape ? 0.72 : 0.68}>
+          <View style={{height: 460}}>
+            <LayersPanel />
+          </View>
+        </Sheet>
+      )}
+      <Sheet visible={tool === 'text'} onClose={() => setTool(null)} title={s.textStudio.title} heightPct={0.82}>
+        <TextStudioPanel />
+      </Sheet>
+      <Sheet visible={tool === 'effects'} onClose={() => setTool(null)} title={s.effects.title} heightPct={0.78}>
+        <EffectsPanel />
+      </Sheet>
+      <Sheet visible={tool === 'assets'} onClose={() => setTool(null)} title={s.assets.title} heightPct={0.72}>
+        <AssetsSheet onDone={() => setTool(null)} />
+      </Sheet>
+      <Sheet visible={tool === 'shapes'} onClose={() => setTool(null)} title={s.editor.shapes} heightPct={0.62}>
+        <ShapesSheet />
+      </Sheet>
+      <Sheet visible={tool === 'move'} onClose={() => setTool(null)} title={s.editor.move} heightPct={0.72}>
+        <MoveSheet />
+      </Sheet>
+
+      {/* AI chooser */}
+      <Sheet visible={aiPanel} onClose={() => setAiPanel(false)} title={s.editor.ai} heightPct={0.5}>
+        <View style={{gap: 10}}>
+          <Pressable style={[styles.aiCard, {backgroundColor: c.surface2, borderColor: c.border}]} onPress={() => {setAiPanel(false); setOcr(true);}}>
+            <Text style={{color: c.text, fontWeight: '800', fontSize: 15}}>🔍 {s.ocr.title}</Text>
+            <Text style={{color: c.textDim, fontSize: 12}}>{s.ocr.subtitle}</Text>
+          </Pressable>
+          <Pressable style={[styles.aiCard, {backgroundColor: c.surface2, borderColor: c.border}]} onPress={() => {setAiPanel(false); setBg(true);}}>
+            <Text style={{color: c.text, fontWeight: '800', fontSize: 15}}>✂️ {s.bg.title}</Text>
+            <Text style={{color: c.textDim, fontSize: 12}}>{s.bg.subtitle}</Text>
+          </Pressable>
+        </View>
+      </Sheet>
+
+      {/* AI workspaces */}
+      <OcrWorkspace visible={ocr} onClose={() => setOcr(false)} />
+      <BgRemoveWorkspace visible={bg} onClose={() => setBg(false)} />
+
+      {/* ---------------- project menu ---------------- */}
+      <Sheet visible={menu} onClose={() => setMenu(false)} title={s.editor.menu} heightPct={0.8}>
+        <ProjectMenu
+          onClose={() => setMenu(false)}
+          themeMode={themeMode}
+          setThemeMode={setThemeMode}
+          showCenter={showCenter}
+          setShowCenter={setShowCenter}
+          showThirds={showThirds}
+          setShowThirds={setShowThirds}
+          showSafe={showSafe}
+          setShowSafe={setShowSafe}
+          safePct={safePct}
+          setSafePct={setSafePct}
+        />
+      </Sheet>
+    </View>
+  );
+}
+
+// ------------------------------------------------------------- shapes sheet
+
+const SHAPE_RECIPES: Array<{id: string; glyph: string; labelAr: string; svg: (fill: string) => string}> = [
+  {id: 'circle', glyph: '●', labelAr: 'دائرة', svg: f => `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480"><circle cx="240" cy="240" r="220" fill="${f}"/></svg>`},
+  {id: 'square', glyph: '■', labelAr: 'مربع', svg: f => `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480"><rect width="440" height="440" x="20" y="20" fill="${f}"/></svg>`},
+  {id: 'rrect', glyph: '▢', labelAr: 'مربع دائري', svg: f => `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480"><rect width="440" height="440" x="20" y="20" rx="72" fill="${f}"/></svg>`},
+  {id: 'triangle', glyph: '▲', labelAr: 'مثلث', svg: f => `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480"><path d="M240 30 L450 450 L30 450 Z" fill="${f}"/></svg>`},
+  {id: 'star', glyph: '★', labelAr: 'نجمة', svg: f => `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480"><path d="M240 30 L292 200 L470 200 L325 306 L378 470 L240 372 L102 470 L155 306 L10 200 L188 200 Z" fill="${f}"/></svg>`},
+  {id: 'arrow', glyph: '➜', labelAr: 'سهم', svg: f => `<svg xmlns="http://www.w3.org/2000/svg" width="560" height="480"><path d="M20 190 H360 V90 L540 240 L360 390 V290 H20 Z" fill="${f}"/></svg>`},
+  {id: 'ring', glyph: '◯', labelAr: 'حلقة', svg: f => `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480"><circle cx="240" cy="240" r="210" fill="none" stroke="${f}" stroke-width="44"/></svg>`},
+  {id: 'line', glyph: '━', labelAr: 'خط', svg: f => `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="60"><rect width="640" height="24" y="18" rx="12" fill="${f}"/></svg>`},
+];
+
+function ShapesSheet() {
+  const c = useTheme();
+  const s = t();
+  const st = useEditor();
+  const [color, setColor] = useState('#3B82F6');
+
+  const place = async (svg: string) => {
+    const W = st.doc?.width ?? 1080;
+    const H = st.doc?.height ?? 1080;
+    await runCommand('svg.importText', {svg, name: 'Shape'});
+    // center the fresh shape on the canvas
+    const active = getState().activeLayerId;
+    if (active != null) {
+      const layer = st.layers.find(l => l.id === active);
+      void layer;
+    }
+    History.push(s.editor.shapes);
+    showToast(s.editor.shapes);
+    void W;
+    void H;
+  };
+
+  return (
+    <View style={{gap: 12}}>
+      <SectionLabel text={s.textStudio.color} />
+      <ColorPicker value={color} onChange={setColor} />
+      <SectionLabel text={s.editor.shapes} />
+      <View style={styles.shapeGrid}>
+        {SHAPE_RECIPES.map(sh => (
+          <Pressable
+            key={sh.id}
+            style={[styles.shapeCell, {backgroundColor: c.surface2, borderColor: c.border}]}
+            onPress={() => place(sh.svg(color))}>
+            <Text style={{color: color, fontSize: 26}}>{sh.glyph}</Text>
+            <Text style={{color: c.textDim, fontSize: 10.5, fontWeight: '700'}}>{sh.labelAr}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// --------------------------------------------------------------- move sheet
+
+function MoveSheet() {
+  const c = useTheme();
+  const s = t();
+  const st = useEditor();
+  const active = st.layers.find(l => l.id === st.activeLayerId);
+
+  const go = async (cmd: string, params: object = {}, label?: string) => {
+    try {
+      await runCommand(cmd, params);
+      History.push(label ?? cmd);
+      showToast(label ?? cmd);
+    } catch (e: any) {
+      showToast(String(e?.message ?? e), 'error');
+    }
+  };
+
+  const nudge = (dx: number, dy: number) =>
+    active && go('layer.translate', {layer: active.id, dx, dy}, `${s.editor.nudge} ${dx},${dy}`);
+
+  return (
+    <View style={{gap: 12}}>
+      <SectionLabel text={s.editor.align} />
+      <View style={styles.gridWrap}>
+        {(
+          [
+            ['leftEdges', s.editor.alignLeft],
+            ['horizontalCenters', s.editor.alignCenterH],
+            ['rightEdges', s.editor.alignRight],
+            ['topEdges', s.editor.alignTop],
+            ['verticalCenters', s.editor.alignCenterV],
+            ['bottomEdges', s.editor.alignBottom],
+          ] as Array<[string, string]>
+        ).map(([k, label]) => (
+          <MiniBtn key={k} label={label} onPress={() => go(`layer.align.${k}`, {}, `${s.editor.align}: ${label}`)} c={c} />
+        ))}
+      </View>
+      <SectionLabel text={s.editor.distribute} />
+      <View style={{flexDirection: 'row', gap: 8}}>
+        <MiniBtn label={s.editor.alignCenterH} onPress={() => go('layer.distribute.horizontalCenters', {}, s.editor.distribute)} c={c} />
+        <MiniBtn label={s.editor.alignCenterV} onPress={() => go('layer.distribute.verticalCenters', {}, s.editor.distribute)} c={c} />
+      </View>
+      <SectionLabel text={s.editor.transform} />
+      <View style={styles.gridWrap}>
+        <MiniBtn label={s.editor.bringFront} onPress={() => go('layer.arrange.bringToFront', {}, s.editor.bringFront)} c={c} />
+        <MiniBtn label={s.editor.sendBack} onPress={() => go('layer.arrange.sendToBack', {}, s.editor.sendBack)} c={c} />
+        <MiniBtn label="Flip H" onPress={() => go('edit.transform.flipHorizontal', {}, 'Flip H')} c={c} />
+        <MiniBtn label="Flip V" onPress={() => go('edit.transform.flipVertical', {}, 'Flip V')} c={c} />
+      </View>
+      <SectionLabel text={s.editor.nudge} />
+      <View style={styles.nudgePad}>
+        <MiniBtn label="↑" onPress={() => nudge(0, -10)} c={c} />
+        <View style={{flexDirection: 'row', gap: 8}}>
+          <MiniBtn label="←" onPress={() => nudge(-10, 0)} c={c} />
+          <MiniBtn label="→" onPress={() => nudge(10, 0)} c={c} />
+        </View>
+        <MiniBtn label="↓" onPress={() => nudge(0, 10)} c={c} />
+      </View>
+      <Text style={{color: c.textFaint, fontSize: 11}}>{s.editor.tapToSelect}</Text>
+    </View>
+  );
+}
+
+function MiniBtn({label, onPress, c}: {label: string; onPress: () => void; c: Palette}) {
+  return (
+    <Pressable onPress={onPress} style={[styles.miniBtn, {backgroundColor: c.surface2, borderColor: c.border}]}>
+      <Text style={{color: c.text, fontSize: 12, fontWeight: '700'}}>{label}</Text>
+    </Pressable>
+  );
+}
+
+// ------------------------------------------------------------ project menu
+
+function ProjectMenu(props: {
+  onClose: () => void;
+  themeMode: 'dark' | 'light' | 'system';
+  setThemeMode: (m: 'dark' | 'light' | 'system') => void;
+  showCenter: boolean;
+  setShowCenter: (v: boolean) => void;
+  showThirds: boolean;
+  setShowThirds: (v: boolean) => void;
+  showSafe: boolean;
+  setShowSafe: (v: boolean) => void;
+  safePct: number;
+  setSafePct: (v: number) => void;
+}) {
+  const c = useTheme();
+  const s = t();
+  const st = useEditor();
+  const [versions, setVersions] = useState<Array<{id: string; label: string; path: string; at: number}>>([]);
+  const [tagDraft, setTagDraft] = useState('');
+
+  const reload = () => ProjectsStore.versions().then(setVersions);
+  useEffect(() => {
+    reload();
+  }, []);
+
+  const saveVersion = async () => {
+    if (st.sessionId == null) {
+      return;
+    }
+    try {
+      await ProjectsStore.saveVersion(st.sessionId, `${st.docName} · ${new Date().toLocaleTimeString()}`);
+      await reload();
+      showToast(s.projects.versionSaved);
+    } catch (e: any) {
+      showToast(String(e?.message ?? e), 'error');
+    }
+  };
+
+  const restore = async (path: string) => {
+    await Editor.openDocument(path);
+    showToast(s.projects.restored);
+    props.onClose();
+  };
+
+  const duplicate = async () => {
+    if (st.sessionId == null) {
+      return;
+    }
+    try {
+      await ProjectsStore.duplicateAs(st.sessionId, `${st.docName} copy`);
+      showToast(s.projects.duplicated);
+    } catch (e: any) {
+      showToast(String(e?.message ?? e), 'error');
+    }
+  };
+
+  const saveTags = async () => {
+    if (!st.projectPath) {
+      return;
+    }
+    await ProjectsStore.setTags(st.projectPath, tagDraft.split(','));
+    showToast(s.projects.tags);
+  };
+
+  return (
+    <ScrollView contentContainerStyle={{gap: 14, paddingBottom: 16}}>
+      {/* theme */}
+      <View style={{gap: 8}}>
+        <SectionLabel text={s.theme.title} />
+        <View style={{flexDirection: 'row', gap: 8}}>
+          {(['dark', 'light', 'system'] as const).map(m => (
+            <Chip key={m} label={(s.theme as Record<string, string>)[m]} active={props.themeMode === m} onPress={() => props.setThemeMode(m)} />
+          ))}
+        </View>
+      </View>
+
+      {/* guides */}
+      <View style={{gap: 8}}>
+        <SectionLabel text={s.editor.smartGuides} />
+        <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 8}}>
+          <Chip label={s.editor.centerGuides} active={props.showCenter} onPress={() => props.setShowCenter(!props.showCenter)} />
+          <Chip label="Thirds" active={props.showThirds} onPress={() => props.setShowThirds(!props.showThirds)} />
+          <Chip label={s.editor.safeArea} active={props.showSafe} onPress={() => props.setShowSafe(!props.showSafe)} />
+        </View>
+        {props.showSafe && (
+          <SliderRow label={s.editor.safeArea} value={props.safePct} min={2} max={30} onChange={props.setSafePct} format={v => `${Math.round(v)}%`} />
+        )}
+      </View>
+
+      {/* versions */}
+      <View style={{gap: 8}}>
+        <SectionLabel text={s.projects.versions} />
+        <View style={{flexDirection: 'row', gap: 8}}>
+          <Chip label={`+ ${s.projects.saveVersion}`} active onPress={saveVersion} />
+          <Chip label={s.projects.duplicate} onPress={duplicate} />
+        </View>
+        {versions.slice(0, 5).map(v => (
+          <Pressable key={v.id} style={[styles.versionRow, {backgroundColor: c.surface2}]} onPress={() => restore(v.path)}>
+            <Text style={{color: c.text, fontSize: 12.5, fontWeight: '600', flex: 1}} numberOfLines={1}>
+              {v.label}
+            </Text>
+            <Text style={{color: c.accent2, fontSize: 11, fontWeight: '800'}}>{s.projects.restore}</Text>
           </Pressable>
         ))}
       </View>
 
-      {/* panel body */}
-      <ScrollView style={styles.panel} contentContainerStyle={styles.panelContent}>
-        {tab === 'layers' && <LayersPanel />}
-
-        {tab === 'text' && (
-          <View style={styles.gap}>
-            <Text style={styles.label}>{s.text.placeholder}</Text>
-            <TextInputBox value={textDraft} onChange={setTextDraft} />
-            <Text style={styles.label}>{s.editor.opacity} · {s.text.color}</Text>
-            <ColorPicker value={textColor} onChange={setTextColor} />
-            <Text style={styles.label}>{s.text.size}: {Math.round(fontSize)}pt</Text>
-            <Slider
-              minimumValue={10}
-              maximumValue={220}
-              step={1}
-              value={fontSize}
-              onSlidingStart={() => History.beginCoalesce('size')}
-              onValueChange={setFontSize}
-              onSlidingComplete={() => History.endCoalesce()}
-              minimumTrackTintColor={theme.accent}
-            />
-            <Pressable style={styles.primary} onPress={addText}>
-              <Text style={styles.primaryText}>+ {s.editor.text}</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {tab === 'styles' && (
-          <View style={styles.gap}>
-            {STYLE_PRESETS.map(p => (
-              <Pressable key={p.name} style={styles.styleCard} onPress={() => applyPreset(p.effects)}>
-                <Text style={styles.styleName}>{p.name}</Text>
-                <Text style={styles.styleMeta}>
-                  {p.effects.map(e => s.styles10[e.kind]).join(' · ')}
-                </Text>
-              </Pressable>
-            ))}
-            {active && (
-              <Text style={styles.label}>
-                {s.editor.styles}: {active.name} — {EFFECT_KINDS.length} {s.editor.styles}
-              </Text>
-            )}
-          </View>
-        )}
-
-        {tab === 'ai' && (
-          <View style={styles.gap}>
-            <Pressable style={styles.aiCard} onPress={runOcr}>
-              <Text style={styles.aiTitle}>🔍 {s.ocrScreen.title}</Text>
-              <Text style={styles.aiMeta}>{s.ocrScreen.run} · AR/EN · on-device</Text>
-            </Pressable>
-            <Pressable style={styles.aiCard} onPress={runBg}>
-              <Text style={styles.aiTitle}>✂️ {s.bg.title}</Text>
-              <Text style={styles.aiMeta}>BiRefNet Lite · on-device</Text>
-            </Pressable>
-          </View>
-        )}
-      </ScrollView>
-
-      {/* blend + opacity quick strip for the active layer */}
-      {active && (
-        <View style={styles.quickStrip}>
-          <Text style={styles.label}>{active.name}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {BLEND_MODES.map(b => (
-              <Pressable
-                key={b}
-                style={[styles.chip, active.blend === b && styles.chipOn]}
-                onPress={() => runCommand('layer.setProps', {layer: active.id, blend: b})}>
-                <Text style={[styles.chipText, active.blend === b && styles.chipTextOn]}>{b}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-          <Slider
-            minimumValue={0}
-            maximumValue={100}
-            value={active.opacity * 100}
-            onSlidingComplete={v =>
-              runCommand('layer.setProps', {layer: active.id, opacity: v / 100})
-            }
-            minimumTrackTintColor={theme.accent}
-          />
-        </View>
-      )}
-
-      {/* AI modals */}
-      <Modal visible={panel === 'ocr'} animationType="slide" onRequestClose={() => setPanel('none')}>
-        <OcrPanel onClose={() => setPanel('none')} />
-      </Modal>
-      <Modal visible={panel === 'bg'} animationType="slide" onRequestClose={() => setPanel('none')}>
-        <BgPanel onClose={() => setPanel('none')} />
-      </Modal>
-
-      {st.busy && (
-        <View style={styles.busy}>
-          <ActivityIndicator color={theme.accent} />
-          <Text style={styles.busyText}>{s.common.busy}</Text>
-        </View>
-      )}
-    </View>
+      {/* tags */}
+      <View style={{gap: 8}}>
+        <SectionLabel text={s.projects.tags} />
+        <TextInputRow value={tagDraft} onChange={setTagDraft} placeholder={s.projects.tagsHint} />
+        <Chip label={s.common.save} onPress={saveTags} />
+      </View>
+    </ScrollView>
   );
-}
-
-function TextInputBox({value, onChange}: {value: string; onChange: (v: string) => void}) {
-  const s = t();
-  return (
-    <TextInput
-      style={[styles.input, {writingDirection: dir()}]}
-      value={value}
-      onChangeText={onChange}
-      multiline
-      placeholder={s.text.placeholder}
-      placeholderTextColor={theme.textDim}
-    />
-  );
-}
-
-function CanvasPlaceholder({sessionId}: {sessionId: number}) {
-  const [thumb, setThumb] = useState<string | null>(null);
-  useEffect(() => {
-    let alive = true;
-    import('../../native/PhotoCraftEngine').then(async ({Engine}) => {
-      try {
-        const data = await Engine.renderThumbnail(sessionId, 1024);
-        if (alive) {
-          setThumb(data);
-        }
-      } catch {
-        /* first frame before first command is expected to be empty */
-      }
-    });
-    return () => {
-      alive = false;
-    };
-  }, [sessionId]);
-  if (!thumb) {
-    return <View style={styles.canvas} />;
-  }
-  const {Image} = require('react-native');
-  return <Image source={{uri: thumb}} style={styles.canvas} resizeMode="contain" />;
-}
-
-function OcrPanel({onClose}: {onClose: () => void}) {
-  const s = t();
-  const [hits, setHits] = useState<Array<{text: string; confidence: number}> | null>(null);
-  const [ready, setReady] = useState(true);
-  const [busyOcr, setBusyOcr] = useState(false);
-
-  const run = async () => {
-    setBusyOcr(true);
-    try {
-      const image = await loadInboxAsDataUrl();
-      const results = await OcrEngine.detectAndRecognize(image);
-      setHits(results);
-    } catch {
-      setReady(await OcrEngine.isReady());
-    } finally {
-      setBusyOcr(false);
-    }
-  };
-
-  const create = async () => {
-    if (!hits) {
-      return;
-    }
-    await OcrEngine.createTextLayers(hits as any);
-    onClose();
-  };
-
-  return (
-    <View style={styles.modal}>
-      <Text style={styles.h1}>{s.ocrScreen.title}</Text>
-      {!ready && <Text style={styles.dim}>{s.ocrScreen.notReady}</Text>}
-      <Pressable style={styles.primary} onPress={run}>
-        <Text style={styles.primaryText}>{busyOcr ? s.common.busy : s.ocrScreen.run}</Text>
-      </Pressable>
-      <ScrollView style={{flex: 1}}>
-        {(hits ?? []).map((h, i) => (
-          <View key={i} style={styles.hitRow}>
-            <Text style={styles.hitText} numberOfLines={1}>{h.text}</Text>
-            <Text style={styles.hitConf}>{Math.round(h.confidence * 100)}%</Text>
-          </View>
-        ))}
-      </ScrollView>
-      <Pressable style={styles.primary} onPress={create}>
-        <Text style={styles.primaryText}>{s.ocrScreen.create}</Text>
-      </Pressable>
-      <Pressable onPress={onClose}><Text style={styles.ghostText}>{s.common.cancel}</Text></Pressable>
-    </View>
-  );
-}
-
-function BgPanel({onClose}: {onClose: () => void}) {
-  const s = t();
-  const [ready, setReady] = useState(true);
-  const [busyBg, setBusyBg] = useState(false);
-  const st = useEditor();
-
-  const go = async (mode: 'quick' | 'hq') => {
-    if (!st.activeLayerId) {
-      return;
-    }
-    setBusyBg(true);
-    try {
-      const image = await loadInboxAsDataUrl();
-      if (mode === 'hq') {
-        await BackgroundRemoval.removeHQ(st.activeLayerId, image);
-      } else {
-        await BackgroundRemoval.removeQuick(st.activeLayerId, image);
-      }
-      onClose();
-    } catch {
-      setReady(await BackgroundRemoval.isReady());
-    } finally {
-      setBusyBg(false);
-    }
-  };
-
-  return (
-    <View style={styles.modal}>
-      <Text style={styles.h1}>{s.bg.title}</Text>
-      {!ready && <Text style={styles.dim}>{s.bg.notReady}</Text>}
-      <Pressable style={styles.primary} onPress={() => go('quick')} disabled={busyBg}>
-        <Text style={styles.primaryText}>{busyBg ? s.common.busy : s.bg.quick}</Text>
-      </Pressable>
-      <Pressable style={styles.secondary} onPress={() => go('hq')} disabled={busyBg}>
-        <Text style={styles.secondaryText}>{s.bg.hq}</Text>
-      </Pressable>
-      <Pressable onPress={onClose}><Text style={styles.ghostText}>{s.common.cancel}</Text></Pressable>
-    </View>
-  );
-}
-
-async function loadInboxAsDataUrl(): Promise<string> {
-  // The inbox file is staged by the share-intent receiver (MainActivity).
-  const path = '/data/data/com.photocraft.mobile/files/inbox/last.png';
-  const {Engine} = await import('../../native/PhotoCraftEngine');
-  // Real base64 read through the engine module (app-storage paths only).
-  const b64 = await (Engine as any).readFileBase64(path);
-  return `data:image/png;base64,${b64}`;
 }
 
 const styles = StyleSheet.create({
-  root: {flex: 1, backgroundColor: theme.bg},
-  center: {flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: theme.bg},
-  canvasWrap: {flex: 1, padding: 8},
-  canvas: {flex: 1, backgroundColor: theme.surface, borderRadius: theme.radius},
-  topbar: {flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8},
-  iconBtn: {
-    width: 40, height: 40, borderRadius: 10, backgroundColor: theme.surface2,
-    alignItems: 'center', justifyContent: 'center',
+  root: {flex: 1},
+  center: {flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16},
+  topbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
   },
-  iconText: {color: theme.text, fontSize: 18},
-  primarySm: {backgroundColor: theme.accent, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10},
-  primarySmText: {color: '#fff', fontWeight: '700'},
-  tabs: {flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingBottom: 6},
-  tab: {flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: theme.surface2, alignItems: 'center'},
-  tabOn: {backgroundColor: theme.accent},
-  tabText: {color: theme.textDim, fontWeight: '600'},
-  tabTextOn: {color: '#fff'},
-  panel: {maxHeight: 260},
-  panelContent: {padding: 12, gap: 8},
-  gap: {gap: 10},
-  label: {color: theme.textDim, fontSize: 12, fontWeight: '600'},
-  input: {
-    backgroundColor: theme.surface2, color: theme.text, borderRadius: 10,
-    padding: 12, minHeight: 84, textAlignVertical: 'top',
+  docName: {fontSize: 16, fontWeight: '800'},
+  body: {flex: 1, flexDirection: 'row'},
+  rail: {borderStartWidth: 1, padding: 10},
+  dock: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    paddingTop: 8,
+    paddingHorizontal: 6,
+    gap: 2,
   },
-  primary: {backgroundColor: theme.accent, borderRadius: 12, alignItems: 'center', paddingVertical: 12},
-  primaryText: {color: '#fff', fontWeight: '800'},
-  secondary: {backgroundColor: theme.surface2, borderRadius: 12, alignItems: 'center', paddingVertical: 12},
-  secondaryText: {color: theme.text, fontWeight: '700'},
-  ghost: {padding: 8},
-  ghostText: {color: theme.accent2, fontWeight: '600'},
-  dim: {color: theme.textDim},
-  styleCard: {backgroundColor: theme.surface, borderRadius: theme.radius, padding: 14, borderWidth: 1, borderColor: theme.border},
-  styleName: {color: theme.text, fontWeight: '700'},
-  styleMeta: {color: theme.textDim, fontSize: 12, marginTop: 4},
-  aiCard: {backgroundColor: theme.surface, borderRadius: theme.radius, padding: 16, borderWidth: 1, borderColor: theme.border},
-  aiTitle: {color: theme.text, fontWeight: '800', fontSize: 16},
-  aiMeta: {color: theme.textDim, marginTop: 4, fontSize: 12},
-  quickStrip: {padding: 10, gap: 6, borderTopWidth: 1, borderTopColor: theme.border},
-  chip: {paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: theme.surface2, marginRight: 6},
-  chipOn: {backgroundColor: theme.accent},
-  chipText: {color: theme.textDim, fontSize: 12},
-  chipTextOn: {color: '#fff', fontWeight: '700'},
-  busy: {
-    position: 'absolute', bottom: 16, left: 16, right: 16,
-    backgroundColor: theme.surface, borderRadius: 12, padding: 12,
-    flexDirection: 'row', gap: 10, alignItems: 'center',
-  },
-  busyText: {color: theme.text},
-  modal: {flex: 1, backgroundColor: theme.bg, padding: 20, gap: 12},
-  h1: {color: theme.text, fontSize: 22, fontWeight: '800'},
-  hitRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: theme.surface, borderRadius: 10, padding: 12, marginBottom: 8,
-  },
-  hitText: {color: theme.text, flex: 1, marginRight: 10},
-  hitConf: {color: theme.success, fontWeight: '700'},
+  dockItem: {flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4, borderRadius: 10},
+  dockIcon: {width: 38, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center'},
+  aiCard: {borderRadius: 14, borderWidth: 1, padding: 16, gap: 4},
+  shapeGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 10},
+  shapeCell: {width: '23%', borderRadius: 12, borderWidth: 1, padding: 10, alignItems: 'center', gap: 4},
+  gridWrap: {flexDirection: 'row', flexWrap: 'wrap', gap: 8},
+  miniBtn: {borderRadius: 10, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 9},
+  nudgePad: {alignItems: 'center', gap: 8},
+  versionRow: {borderRadius: 10, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8},
 });

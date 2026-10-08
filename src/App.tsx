@@ -1,44 +1,64 @@
 /**
- * App — root navigator (lightweight state tabs; no heavy nav dependency).
- * Home ⇄ Editor (+ panels), plus Export / Smart Resize / Assets / Brand Kit.
+ * App — root shell: theme initialization (dark/light/system), the screen
+ * router, the global toast host and a themed status bar. Arabic ships as a
+ * fully mirrored experience (I18nManager at boot).
  */
-import React, {useState} from 'react';
-import {I18nManager, StatusBar, StyleSheet, View} from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {StatusBar, StyleSheet, View} from 'react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {theme} from './theme';
+import {initTheme, useTheme} from './theme';
 import {HomeScreen} from './screens/HomeScreen';
 import {EditorScreen} from './screens/EditorScreen';
 import {ExportScreen} from './screens/ExportScreen';
 import {SmartResizeScreen} from './screens/SmartResizeScreen';
 import {AssetLibraryScreen} from './screens/AssetLibraryScreen';
 import {BrandKitScreen} from './screens/BrandKitScreen';
+import {TemplatesScreen} from './screens/TemplatesScreen';
+import {TutorialsScreen} from './screens/TutorialsScreen';
+import {ToastHost} from './components/ui';
 
-export type Route = 'home' | 'editor' | 'export' | 'smart' | 'assets' | 'brand';
+export type Route =
+  | 'home'
+  | 'editor'
+  | 'export'
+  | 'smart'
+  | 'assets'
+  | 'brand'
+  | 'templates'
+  | 'tutorials';
 
 export default function App() {
   const [route, setRoute] = useState<Route>('home');
+  const [ready, setReady] = useState(false);
+  const c = useTheme();
 
-  // Arabic ships as a fully mirrored experience.
-  if (I18nManager.getConstants().isRTL === false && false) {
-    // (kept explicit: toggling RTL requires an app restart via I18nManager.forceRTL
-    // in index.js before registerComponent — see src/boot.js)
-  }
+  useEffect(() => {
+    initTheme().then(() => setReady(true));
+  }, []);
+
+  // Arabic ships as a fully mirrored experience (forced RTL in index.js).
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor={theme.bg} />
+      <StatusBar
+        barStyle={c.mode === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={c.bg}
+      />
       <View style={styles.root}>
-        {route === 'home' && <HomeScreen onNavigate={setRoute} />}
-        {route === 'editor' && <EditorScreen onNavigate={setRoute} />}
-        {route === 'export' && <ExportScreen onNavigate={setRoute} />}
-        {route === 'smart' && <SmartResizeScreen onNavigate={setRoute} />}
-        {route === 'assets' && <AssetLibraryScreen onNavigate={setRoute} />}
-        {route === 'brand' && <BrandKitScreen onNavigate={setRoute} />}
+        {ready && route === 'home' && <HomeScreen onNavigate={setRoute} />}
+        {ready && route === 'editor' && <EditorScreen onNavigate={setRoute} />}
+        {ready && route === 'export' && <ExportScreen onNavigate={setRoute} />}
+        {ready && route === 'smart' && <SmartResizeScreen onNavigate={setRoute} />}
+        {ready && route === 'assets' && <AssetLibraryScreen onNavigate={setRoute} />}
+        {ready && route === 'brand' && <BrandKitScreen onNavigate={setRoute} />}
+        {ready && route === 'templates' && <TemplatesScreen onNavigate={setRoute} />}
+        {ready && route === 'tutorials' && <TutorialsScreen onNavigate={setRoute} />}
       </View>
+      <ToastHost />
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {flex: 1, backgroundColor: theme.bg},
+  root: {flex: 1, backgroundColor: 'transparent'},
 });

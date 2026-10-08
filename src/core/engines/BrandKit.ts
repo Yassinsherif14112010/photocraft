@@ -163,6 +163,40 @@ export const BrandKitStore = {
     return kit;
   },
 
+  // ------------------------------------------------------ colors & fonts
+
+  async addColor(color: string): Promise<BrandKit> {
+    const kit = await BrandKitStore.load();
+    if (/^#[0-9a-fA-F]{6}$/.test(color) && !kit.colors.includes(color.toUpperCase())) {
+      kit.colors = [color.toUpperCase(), ...kit.colors].slice(0, 24);
+      await BrandKitStore.save(kit);
+    }
+    return kit;
+  },
+
+  async removeColor(color: string): Promise<BrandKit> {
+    const kit = await BrandKitStore.load();
+    kit.colors = kit.colors.filter(c => c !== color);
+    await BrandKitStore.save(kit);
+    return kit;
+  },
+
+  async addFont(family: string): Promise<BrandKit> {
+    const kit = await BrandKitStore.load();
+    if (family.trim() && !kit.fonts.includes(family.trim())) {
+      kit.fonts = [family.trim(), ...kit.fonts].slice(0, 16);
+      await BrandKitStore.save(kit);
+    }
+    return kit;
+  },
+
+  async removeFont(family: string): Promise<BrandKit> {
+    const kit = await BrandKitStore.load();
+    kit.fonts = kit.fonts.filter(f => f !== family);
+    await BrandKitStore.save(kit);
+    return kit;
+  },
+
   /** Place a brand logo into the document as a real layer. */
   async placeLogo(kit: BrandKit, index: number, centerX: number, centerY: number, size = 240): Promise<number> {
     const path = kit.logos[index];

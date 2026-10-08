@@ -75,13 +75,11 @@ export const BackgroundRemoval = {
   },
 
   /** Legacy entry points kept for the editor panel (quick/HQ). */
-  async removeQuick(layerId: number, imageBase64: string): Promise<BgRemovalResult> {
-    const _ = layerId;
+  async removeQuick(_layerId: number, imageBase64: string): Promise<BgRemovalResult> {
     return BackgroundRemoval.applyAiCutout(imageBase64, {mode: 'quick'});
   },
 
-  async removeHQ(layerId: number, imageBase64: string): Promise<BgRemovalResult> {
-    const _ = layerId;
+  async removeHQ(_layerId: number, imageBase64: string): Promise<BgRemovalResult> {
     return BackgroundRemoval.applyAiCutout(imageBase64, {mode: 'hq'});
   },
 

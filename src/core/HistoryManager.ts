@@ -4,7 +4,7 @@
  * this only tracks labels for the history list and coalesces slider-driven
  * edits so a drag produces ONE undo step, like Photoshop.
  */
-import {undo, redo} from '../DocumentStore';
+import {undo, redo} from './DocumentStore';
 
 export interface HistoryEntry {
   label: string;

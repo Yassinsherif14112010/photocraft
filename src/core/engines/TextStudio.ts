@@ -59,6 +59,7 @@ export interface FontCollection {
 }
 
 const KEY_FONT_FAV = 'pc.text.fontFavorites';
+const KEY_FONT_RECENT = 'pc.text.fontRecents';
 const KEY_FONT_COLL = 'pc.text.fontCollections';
 const KEY_FONT_CATS = 'pc.text.fontCategories';
 
@@ -103,7 +104,7 @@ export const TextStudio = {
       // Per-range character styles land through `type.edit {runs}` (one undo step).
       await Editor.runCommand('type.edit', {
         layer: id,
-        runs: opts.runs.map(r => ({start: r.start, end: r.end, ...r})),
+        runs: opts.runs.map(r => ({...r})),
       });
     }
     return id;
@@ -182,7 +183,10 @@ export const TextStudio = {
 
   /** Horizontal/vertical type orientation. */
   async setOrientation(id: number, orientation: 'horizontal' | 'vertical') {
-    await Editor.runCommand('type.orientation.' + orientation, {layer: id});
+    await Editor.runCommand(
+      orientation === 'vertical' ? 'type.orientation.vertical' : 'type.orientation.horizontal',
+      {layer: id},
+    );
   },
 
   /** Find & replace across all text layers (`edit.findAndReplaceText`). */
@@ -241,6 +245,16 @@ export const TextStudio = {
     return JSON.parse((await AsyncStorage.getItem(KEY_FONT_FAV)) ?? '[]');
   },
 
+  async recentFonts(): Promise<string[]> {
+    return JSON.parse((await AsyncStorage.getItem(KEY_FONT_RECENT)) ?? '[]');
+  },
+
+  async pushRecentFont(family: string) {
+    const rec = (await TextStudio.recentFonts()).filter(f => f !== family);
+    rec.unshift(family);
+    await AsyncStorage.setItem(KEY_FONT_RECENT, JSON.stringify(rec.slice(0, 12)));
+  },
+
   async toggleFontFavorite(family: string): Promise<boolean> {
     const favs = new Set(await TextStudio.fontFavorites());
     if (favs.has(family)) {
@@ -274,7 +288,7 @@ export const TextStudio = {
   async fontCategories(): Promise<Record<string, string[]>> {
     const faces = await TextStudio.listFonts();
     const families = [...new Set(faces.map(f => f.family))];
-    const saved = JSON.parse((await AsyncStorage.getItem(KEY_FONT_CATS)) ?? '{}') as Record<string, string[]>;
+    const saved = JSON.parse((await AsyncStorage.getItem(KEY_FONT_CATS)) ?? '{}') as Record<string, string>;
     const out: Record<string, string[]> = {};
     for (const family of families) {
       const cat = saved[family] ?? categorize(family);
@@ -359,6 +373,77 @@ export const TEXT_PRESETS: TextPreset[] = [
     char: {font: 'Cairo', size: 64, weight: 900, tracking: 0},
     para: {align: 'center'},
   },
+];
+
+/** Social-media text presets (real style payloads applied via type.setStyle). */
+export const SOCIAL_TEXT_PRESETS: TextPreset[] = [
+  {
+    id: 'ig-cover',
+    label: 'IG Cover Line',
+    labelAr: 'غلاف إنستغرام',
+    char: {font: 'Cairo', size: 84, weight: 900, tracking: -10},
+    para: {align: 'center'},
+  },
+  {
+    id: 'yt-shout',
+    label: 'YT Shout',
+    labelAr: 'صرخة يوتيوب',
+    char: {font: 'Inter', size: 96, weight: 900, tracking: 0, caps: 'all'},
+    para: {align: 'center'},
+  },
+  {
+    id: 'story-hook',
+    label: 'Story Hook',
+    labelAr: 'خطاف الستوري',
+    char: {font: 'Cairo', size: 72, weight: 800},
+    para: {align: 'center', direction: 'rtl'},
+  },
+  {
+    id: 'tiktok-caption',
+    label: 'TikTok Caption',
+    labelAr: 'تعليق تيك توك',
+    char: {font: 'Cairo', size: 40, weight: 700, leading: 56},
+    para: {align: 'center'},
+  },
+];
+
+/** Arabic typography presets — RTL-native, shaped by the engine. */
+export const ARABIC_TEXT_PRESETS: TextPreset[] = [
+  {
+    id: 'ar-title',
+    label: 'عنوان كوفي',
+    labelAr: 'عنوان كوفي',
+    char: {font: 'Cairo', size: 110, weight: 900, tracking: 0},
+    para: {align: 'right', direction: 'rtl'},
+  },
+  {
+    id: 'ar-naskh-body',
+    label: 'متن نسخي',
+    labelAr: 'متن نسخي',
+    char: {font: 'Cairo', size: 34, weight: 400, leading: 'auto'},
+    para: {align: 'right', direction: 'rtl', autoLeading: 160},
+  },
+  {
+    id: 'ar-quote',
+    label: 'اقتباس',
+    labelAr: 'اقتباس',
+    char: {font: 'Cairo', size: 56, weight: 600, baselineShift: 0},
+    para: {align: 'center', direction: 'rtl'},
+  },
+  {
+    id: 'ar-cta',
+    label: 'دعوة لتصرّف',
+    labelAr: 'دعوة لتصرّف',
+    char: {font: 'Cairo', size: 64, weight: 900, tracking: 20},
+    para: {align: 'center', direction: 'rtl'},
+  },
+];
+
+/** Curated font pairs (headline + body) drawn from the engine's font book. */
+export const FONT_PAIRS: Array<{label: string; labelAr: string; headline: string; body: string}> = [
+  {label: 'Cairo + Cairo', labelAr: 'القاهرة + القاهرة', headline: 'Cairo', body: 'Cairo'},
+  {label: 'Inter + Cairo', labelAr: 'إنتر + القاهرة', headline: 'Inter', body: 'Cairo'},
+  {label: 'Inter + Inter', labelAr: 'إنتر + إنتر', headline: 'Inter', body: 'Inter'},
 ];
 
 /** Text templates — multi-command compositions persisted as steps. */

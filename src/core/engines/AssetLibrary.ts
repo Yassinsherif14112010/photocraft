@@ -8,11 +8,10 @@
  * Favorites/recents/tags persist in AsyncStorage.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {SvgEngine} from './SvgEngine';
 import {Editor, getState} from '../DocumentStore';
 import {Engine, Assets as NativeAssets} from '../../native/PhotoCraftEngine';
 
-export type AssetCategory = 'icons' | 'shapes' | 'stickers' | 'user';
+export type AssetCategory = 'icons' | 'shapes' | 'stickers' | 'logos' | 'frames' | 'social' | 'decorative' | 'user';
 
 export interface AssetItem {
   id: string;
@@ -29,6 +28,7 @@ const KEY_FAV = 'pc.assets.favorites';
 const KEY_RECENT = 'pc.assets.recents';
 const KEY_USER = 'pc.assets.user';
 const KEY_TAGS = 'pc.assets.tags';
+const KEY_USES = 'pc.assets.uses';
 
 /** Bundled library — real SVG sources ship in android assets (asset-library/). */
 export const BUNDLED_ASSETS: AssetItem[] = [
@@ -45,6 +45,15 @@ export const BUNDLED_ASSETS: AssetItem[] = [
   {id: 'st-sale', name: 'Sale Tag', nameAr: 'تخفيضات', category: 'stickers', tags: ['sale', 'offer', 'discount'], source: 'stickers/sale.svg'},
   {id: 'st-new', name: 'New!', nameAr: 'جديد!', category: 'stickers', tags: ['new', 'label'], source: 'stickers/new.svg'},
   {id: 'st-open', name: 'Open 24/7', nameAr: 'مفتوح ٢٤ ساعة', category: 'stickers', tags: ['open', 'hours', 'shop'], source: 'stickers/open.svg'},
+  {id: 'lg-monogram', name: 'Monogram Badge', nameAr: 'شعار أحرف', category: 'logos', tags: ['logo', 'monogram', 'brand'], source: 'logos/monogram.svg'},
+  {id: 'lg-mark', name: 'Geometric Mark', nameAr: 'شعار هندسي', category: 'logos', tags: ['logo', 'mark', 'abstract'], source: 'logos/mark.svg'},
+  {id: 'fr-frame', name: 'Classic Frame', nameAr: 'إطار كلاسيكي', category: 'frames', tags: ['frame', 'border', 'photo'], source: 'frames/classic.svg'},
+  {id: 'fr-corners', name: 'Corner Accents', nameAr: 'زخارف زوايا', category: 'frames', tags: ['frame', 'corners', 'elegant'], source: 'frames/corners.svg'},
+  {id: 'so-ig', name: 'Social Handle Card', nameAr: 'بطاقة معرّف اجتماعي', category: 'social', tags: ['social', 'instagram', 'handle'], source: 'social/handle.svg'},
+  {id: 'so-like', name: 'Like Counter', nameAr: 'عدّاد إعجاب', category: 'social', tags: ['social', 'like', 'heart'], source: 'social/like.svg'},
+  {id: 'de-squiggle', name: 'Squiggle Underline', nameAr: 'خط متموج', category: 'decorative', tags: ['underline', 'handdrawn', 'accent'], source: 'decorative/squiggle.svg'},
+  {id: 'de-sparkle', name: 'Sparkle Cluster', nameAr: 'لمعات', category: 'decorative', tags: ['sparkle', 'shine', 'magic'], source: 'decorative/sparkle.svg'},
+  {id: 'de-blob', name: 'Soft Blob', nameAr: 'بقعة ناعمة', category: 'decorative', tags: ['blob', 'background', 'organic'], source: 'decorative/blob.svg'},
 ];
 
 /** In-memory thumbnail cache (data URLs rendered by the engine). */
@@ -80,7 +89,43 @@ export const AssetLibrary = {
   },
 
   async categories(): Promise<AssetCategory[]> {
-    return ['icons', 'shapes', 'stickers', 'user'];
+    return ['icons', 'shapes', 'stickers', 'logos', 'frames', 'social', 'decorative', 'user'];
+  },
+
+  /** Trending = most-placed assets (real usage counts from placements). */
+  async trending(): Promise<AssetItem[]> {
+    const uses = await AssetLibrary.usageCounts();
+    const all = await AssetLibrary.all();
+    return all
+      .filter(a => (uses[a.id] ?? 0) > 0)
+      .sort((a, b) => (uses[b.id] ?? 0) - (uses[a.id] ?? 0))
+      .slice(0, 12);
+  },
+
+  async usageCounts(): Promise<Record<string, number>> {
+    try {
+      return JSON.parse((await AsyncStorage.getItem(KEY_USES)) ?? '{}');
+    } catch {
+      return {};
+    }
+  },
+
+  /** Collections: assets grouped by their first tag (real tag clusters). */
+  async collections(): Promise<Array<{tag: string; items: AssetItem[]}>> {
+    const all = await AssetLibrary.all();
+    const map = new Map<string, AssetItem[]>();
+    for (const a of all) {
+      const key = a.tags[0];
+      if (!key) {
+        continue;
+      }
+      const list = map.get(key) ?? [];
+      list.push(a);
+      map.set(key, list);
+    }
+    return [...map.entries()]
+      .filter(([, items]) => items.length >= 2)
+      .map(([tag, items]) => ({tag, items}));
   },
 
   // ------------------------------------------------------------- favorites
@@ -182,6 +227,10 @@ export const AssetLibrary = {
   /** Place an asset into the document (SVG → vector layers, image → raster). */
   async place(asset: AssetItem, centerX: number, centerY: number, size = 320): Promise<number> {
     await AssetLibrary.pushRecent(asset.id);
+    // real usage counter powering the Trending rail
+    const uses = await AssetLibrary.usageCounts();
+    uses[asset.id] = (uses[asset.id] ?? 0) + 1;
+    await AsyncStorage.setItem(KEY_USES, JSON.stringify(uses));
     const {doc} = getState();
     if (!doc) {
       throw new Error('no document open');
@@ -293,4 +342,22 @@ export const INLINE_SVGS: Record<string, string> = {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect x="48" y="176" width="416" height="160" rx="32" fill="#10B981"/><text x="256" y="290" font-family="sans-serif" font-size="104" font-weight="bold" text-anchor="middle" fill="#fff">NEW</text></svg>',
   'stickers/open.svg':
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><circle cx="256" cy="256" r="224" fill="#0EA5E9"/><text x="256" y="240" font-family="sans-serif" font-size="88" font-weight="bold" text-anchor="middle" fill="#fff">OPEN</text><text x="256" y="340" font-family="sans-serif" font-size="72" font-weight="bold" text-anchor="middle" fill="#fff">24/7</text></svg>',
+  'logos/monogram.svg':
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><circle cx="256" cy="256" r="232" fill="none" stroke="currentColor" stroke-width="16"/><circle cx="256" cy="256" r="188" fill="#3B82F6"/><text x="256" y="316" font-family="sans-serif" font-size="170" font-weight="bold" text-anchor="middle" fill="#fff">PC</text></svg>',
+  'logos/mark.svg':
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M256 40 L472 256 L256 472 L40 256 Z" fill="none" stroke="currentColor" stroke-width="28"/><path d="M256 136 L376 256 L256 376 L136 256 Z" fill="#22D3EE"/></svg>',
+  'frames/classic.svg':
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect x="48" y="48" width="416" height="416" fill="none" stroke="currentColor" stroke-width="24"/><rect x="92" y="92" width="328" height="328" fill="none" stroke="currentColor" stroke-width="8"/></svg>',
+  'frames/corners.svg':
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><g fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="round"><path d="M40 140 V40 H140"/><path d="M372 40 H472 V140"/><path d="M472 372 V472 H372"/><path d="M140 472 H40 V372"/></g></svg>',
+  'social/handle.svg':
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect x="36" y="150" width="440" height="212" rx="106" fill="#101014"/><circle cx="160" cy="256" r="62" fill="#22D3EE"/><text x="256" y="282" font-family="sans-serif" font-size="84" font-weight="bold" fill="#fff">@studio</text></svg>',
+  'social/like.svg':
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect x="36" y="36" width="440" height="440" rx="96" fill="#EC4899"/><path fill="#fff" d="M256 420l-38-34C130 306 76 258 76 202c0-52 40-92 92-92 30 0 58 14 88 44 30-30 58-44 88-44 52 0 92 40 92 92 0 56-54 104-142 184z"/></svg>',
+  'decorative/squiggle.svg':
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M32 300 C 96 200, 160 200, 224 300 S 352 400, 416 300 S 480 220, 480 220" fill="none" stroke="#F59E0B" stroke-width="28" stroke-linecap="round"/></svg>',
+  'decorative/sparkle.svg':
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><g fill="#FACC15"><path d="M256 48l36 120 120 36-120 36-36 120-36-120-120-36 120-36z"/><path d="M400 320l18 58 58 18-58 18-18 58-18-58-58-18 58-18z"/><path d="M96 340l14 44 44 14-44 14-14 44-14-44-44-14 44-14z"/></g></svg>',
+  'decorative/blob.svg':
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="#A855F7" opacity="0.85" d="M416 96c48 64 56 160 8 224s-152 96-232 72S40 280 48 192 128 24 216 16s152 16 200 80z"/></svg>',
 };
