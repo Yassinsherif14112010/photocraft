@@ -44,7 +44,10 @@ class CanvasView(context: Context) : SurfaceView(context), SurfaceHolder.Callbac
     }
 
     fun markDirty() {
-        synchronized(frameLock) { dirty = true }
+        synchronized(frameLock) {
+            dirty = true
+            frameLock.notifyAll()
+        }
         (context as? FrameSink)?.onFrameRequest()
     }
 
@@ -68,26 +71,32 @@ class CanvasView(context: Context) : SurfaceView(context), SurfaceHolder.Callbac
         rendering = true
         renderThread = thread(name = "photocraft-canvas") {
             while (rendering) {
-                val frame: Bitmap? = synchronized(frameLock) {
-                    if (!dirty) null else {
-                        dirty = false
-                        latest
+                val pending: Boolean = synchronized(frameLock) {
+                    if (!dirty) {
+                        // Event-driven idle wait instead of a 60 Hz busy poll.
+                        frameLock.wait(250)
                     }
+                    dirty
                 }
-                if (frame == null || session == 0L) {
+                if (!pending || session == 0L) continue
+                synchronized(frameLock) { dirty = false }
+                // Ask the engine for a fresh composite (blocking JNI call). The
+                // JNI hands back the exact [len, width, height] — the buffer is
+                // never interpreted from the document aspect or the last frame.
+                val sizes = LongArray(3)
+                val rgba = PhotoCraftJni.nativeRenderRgba(session, maxSide, sizes)
+                if (rgba.isEmpty() || sizes[1] <= 0 || sizes[2] <= 0) {
+                    synchronized(frameLock) { dirty = true }
                     Thread.sleep(16)
                     continue
                 }
-                // Ask the engine for a fresh composite (blocking JNI call).
-                val rgba = PhotoCraftJni.nativeRenderRgba(session, maxSide)
-                if (rgba.isEmpty()) {
-                    drawFrame(frame)
+                val w = sizes[1].toInt()
+                val h = sizes[2].toInt()
+                if (rgba.size != w * h * 4) {
+                    synchronized(frameLock) { dirty = true }
                     continue
                 }
-                // Size metadata comes from the PNG-encoded header the engine wrote for
-                // doc.render — recover it by decoding dimensions only.
-                val size = decodeSize(rgba, maxSide)
-                val bmp = Bitmap.createBitmap(size.first, size.second, Bitmap.Config.ARGB_8888)
+                val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
                 bmp.copyPixelsFromBuffer(java.nio.ByteBuffer.wrap(rgba))
                 synchronized(frameLock) { latest = bmp }
                 drawFrame(bmp)
@@ -98,6 +107,7 @@ class CanvasView(context: Context) : SurfaceView(context), SurfaceHolder.Callbac
 
     private fun stopLoop() {
         rendering = false
+        synchronized(frameLock) { frameLock.notifyAll() }
         renderThread?.join(400)
         renderThread = null
     }
@@ -116,17 +126,6 @@ class CanvasView(context: Context) : SurfaceView(context), SurfaceHolder.Callbac
         } finally {
             holder.unlockCanvasAndPost(canvas)
         }
-    }
-
-    private fun decodeSize(rgba: ByteArray, maxSide: Int): Pair<Int, Int> {
-        // The JNI contract: the buffer is tightly packed RGBA of the rendered PNG's size.
-        // The engine's render_png() bounds the longest side to `maxSide`, so derive the
-        // other side from the document aspect communicated through markDirty's caller.
-        // Fall back to a square interpretation if metadata is missing (never expected).
-        val total = rgba.size / 4
-        val w = latest?.width ?: maxSide
-        val h = total / w
-        return Pair(w, h.coerceAtLeast(1))
     }
 }
 

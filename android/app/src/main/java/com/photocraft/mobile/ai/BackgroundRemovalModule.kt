@@ -14,6 +14,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.Base64
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import org.json.JSONObject
 
 /**
@@ -38,18 +39,32 @@ class BackgroundRemovalModule(private val reactContext: ReactApplicationContext)
     }
 
     private val executor = Executors.newSingleThreadExecutor { r -> Thread(r, "photocraft-bgremoval") }
-    private val engine by lazy { BackgroundRemovalEngine(reactContext) }
+
+    @Volatile
+    private var engine: BackgroundRemovalEngine? = null
 
     override fun getName() = NAME
 
     override fun invalidate() {
-        engine.close()
-        executor.shutdownNow()
+        // Closing an OrtSession while a run() is in flight on the executor is
+        // undefined behaviour in ONNX Runtime — drain the queue first.
+        executor.shutdown()
+        val drained = try {
+            executor.awaitTermination(3, TimeUnit.SECONDS)
+        } catch (_: InterruptedException) {
+            false
+        }
+        if (drained) {
+            engine?.close()
+            engine = null
+        }
         super.invalidate()
     }
 
     @ReactMethod
-    fun isModelReady(promise: Promise) = promise.resolve(engine.isReady())
+    fun isModelReady(promise: Promise) = promise.resolve(
+        (engine ?: BackgroundRemovalEngine(reactContext)).isReady()
+    )
 
     @ReactMethod
     fun modelsDir(promise: Promise) = promise.resolve(
@@ -75,14 +90,17 @@ class BackgroundRemovalModule(private val reactContext: ReactApplicationContext)
                 val shiftEdge = opts.optDouble("shiftEdge", 0.0).toFloat().coerceIn(-1f, 1f)
 
                 val src = decode(image)
-                val matte = engine.matteOf(src, input)
+                val eng = engine ?: BackgroundRemovalEngine(reactContext).also { engine = it }
+                val matte = eng.matteOf(src, input)
                 val refined = MatteRefine.refine(matte, input, threshold, edgeSmooth, feather, shiftEdge)
-                val cutout = MatteRefine.compose(src, refined, input)
+                // Restore the source aspect: full-resolution, aspect-true cutout.
+                val full = MatteRefine.resample(refined, input, src.width, src.height)
+                val cutout = MatteRefine.composeFullRes(src, full)
 
                 var savedAs: String? = null
                 val saveAs = opts.optString("saveAs", "").ifBlank { null }
                 if (saveAs != null) {
-                    val out = File(saveAs).apply { parentFile?.mkdirs() }
+                    val out = requireAppPath(saveAs).apply { parentFile?.mkdirs() }
                     FileOutputStream(out).use { fos ->
                         cutout.compress(Bitmap.CompressFormat.PNG, 100, fos)
                     }
@@ -112,7 +130,8 @@ class BackgroundRemovalModule(private val reactContext: ReactApplicationContext)
                 val mode = opts.optString("mode", "hq")
                 val input = if (mode == "quick") QUICK_INPUT else HQ_INPUT
                 val src = decode(image)
-                val matte = engine.matteOf(src, input)
+                val eng = engine ?: BackgroundRemovalEngine(reactContext).also { engine = it }
+                val matte = eng.matteOf(src, input)
                 val refined = MatteRefine.refine(
                     matte, input,
                     opts.optDouble("threshold", 0.0).toFloat().coerceIn(0f, 1f),
@@ -120,7 +139,9 @@ class BackgroundRemovalModule(private val reactContext: ReactApplicationContext)
                     opts.optDouble("feather", 0.0).toFloat().coerceIn(0f, 8f),
                     opts.optDouble("shiftEdge", 0.0).toFloat().coerceIn(-1f, 1f),
                 )
-                val bmp = MatteRefine.preview(refined, input)
+                // Aspect-true grayscale preview (matches the real cutout geometry).
+                val full = MatteRefine.resample(refined, input, src.width, src.height)
+                val bmp = MatteRefine.previewRect(full, src.width, src.height)
                 val png = ByteArrayOutputStream()
                 bmp.compress(Bitmap.CompressFormat.PNG, 90, png)
                 val b64 = Base64.getEncoder().encodeToString(png.toByteArray())
@@ -138,5 +159,17 @@ class BackgroundRemovalModule(private val reactContext: ReactApplicationContext)
         val bytes = Base64.getDecoder().decode(base64)
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
             ?: error("unsupported image payload")
+    }
+
+    /** Cutout writes must stay inside app storage (filesDir / cacheDir). */
+    private fun requireAppPath(path: String): File {
+        val f = File(path)
+        val root = reactContext.filesDir.canonicalPath
+        val cache = reactContext.cacheDir.canonicalPath
+        val canonical = f.canonicalFile.absolutePath
+        require(canonical.startsWith(root) || canonical.startsWith(cache)) {
+            "path escapes app storage: $path"
+        }
+        return f
     }
 }

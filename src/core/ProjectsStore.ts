@@ -134,7 +134,12 @@ export const ProjectsStore = {
     const dir = path.substring(0, path.lastIndexOf('/'));
     const ext = path.endsWith('.pcraft') ? '.pcraft' : path.substring(path.lastIndexOf('.'));
     const to = `${dir}/${safe}-${Date.now()}${ext}`;
-    await FileIO?.moveFile(path, to);
+    // The record is only updated after the filesystem move really succeeded —
+    // a failed move must leave the original project intact and indexed.
+    const moved = await FileIO?.moveFile(path, to);
+    if (!moved) {
+      throw new Error(`rename failed: could not move ${path} → ${to}`);
+    }
     const oldThumb = row.thumbPath ?? thumbPathFor(path);
     const newThumb = thumbPathFor(to);
     try {

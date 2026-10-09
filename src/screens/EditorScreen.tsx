@@ -171,7 +171,11 @@ export function EditorScreen({onNavigate}: {onNavigate: (r: Route) => void}) {
               {st.docName}
             </Text>
             <Text style={{color: c.textFaint, fontSize: 10.5}}>
-              {st.lastAutosaveAt ? `${s.home.autoSaved} ✓` : s.projects.autosaveOn}
+              {st.saveError
+                ? `${s.home.autoSaved} ✕`
+                : st.lastAutosaveAt
+                  ? `${s.home.autoSaved} ✓`
+                  : s.projects.autosaveOn}
             </Text>
           </Pressable>
         )}

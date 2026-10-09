@@ -24,6 +24,9 @@ export interface EditorState {
   canRedo: boolean;
   busy: boolean;
   error: string | null;
+  /** Set when a background autosave failed — the UI can show it without
+   *  blocking; cleared on the next successful save. */
+  saveError: string | null;
   /** Bumped after every mutating command — the canvas re-renders on change. */
   canvasVersion: number;
   /** Set when a background autosave just completed (UI can badge it). */
@@ -45,6 +48,7 @@ let state: EditorState = {
   canRedo: false,
   busy: false,
   error: null,
+  saveError: null,
   canvasVersion: 0,
   lastAutosaveAt: null,
   locks: {},
@@ -140,12 +144,17 @@ function safeName(name: string): string {
 export async function newDocument(name: string, width: number, height: number, dpi = 72) {
   set({busy: true, error: null});
   try {
+    // A document is already open: free its native session first (the engine
+    // session is the document's owner — leaking it leaks real memory).
+    if (state.sessionId != null) {
+      await Engine.closeSession(state.sessionId);
+    }
     const {sessionId} = await Engine.engineCommands();
     // `doc.new` runs the engine's `file.new` (`resolution` is the DPI field).
     await engineJson(Engine.call(sessionId, 'doc.new', {name, width, height, resolution: dpi, background: 'white'}));
     const info = await inspect(sessionId);
     const projectPath = `${projectsDir()}/${safeName(name)}-${Date.now()}.pcraft`;
-    set({sessionId, busy: false, error: null, projectPath, canvasVersion: 0, ...(info as object)});
+    set({sessionId, busy: false, error: null, saveError: null, projectPath, canvasVersion: 0, ...(info as object)});
   } catch (e: any) {
     set({busy: false, error: String(e?.message ?? e)});
   }
@@ -154,10 +163,14 @@ export async function newDocument(name: string, width: number, height: number, d
 export async function openDocument(path: string) {
   set({busy: true, error: null});
   try {
+    // Same session-hygiene rule as newDocument: never hold two sessions.
+    if (state.sessionId != null) {
+      await Engine.closeSession(state.sessionId);
+    }
     const {sessionId} = await Engine.engineCommands();
     await engineJson(Engine.openDocument(sessionId, path));
     const info = await inspect(sessionId);
-    set({sessionId, busy: false, error: null, projectPath: path, canvasVersion: 0, ...(info as object)});
+    set({sessionId, busy: false, error: null, saveError: null, projectPath: path, canvasVersion: 0, ...(info as object)});
     await ProjectsStore.touch(path);
   } catch (e: any) {
     set({busy: false, error: String(e?.message ?? e)});
@@ -192,7 +205,11 @@ function scheduleAutosave() {
   }
   autosaveTimer = setTimeout(() => {
     autosaveTimer = null;
-    autoSaveNow().catch(() => {});
+    autoSaveNow().catch((e: any) => {
+      // A failed autosave must not look like a success (no badge, no state
+      // claiming a fresh save) — surface it so the UI can show a hint.
+      set({saveError: String(e?.message ?? e)});
+    });
   }, 1400);
 }
 
@@ -225,7 +242,10 @@ async function autoSaveNow() {
   if (!(reply as {error?: string}).error) {
     const thumbPath = await captureThumbnail(sessionId, projectPath);
     await ProjectsStore.upsert({name: docName, path: projectPath, width: doc.width, height: doc.height, thumbPath});
-    set({lastAutosaveAt: Date.now()});
+    set({lastAutosaveAt: Date.now(), saveError: null});
+  } else {
+    // doc.save failed — never silently clear/keep success state.
+    throw new Error((reply as {error?: string}).error);
   }
 }
 
@@ -280,9 +300,14 @@ export async function runBatch(steps: Array<{command: string; params?: object}>)
 
 export async function setActiveLayer(id: number) {
   const {sessionId} = state;
-  set({activeLayerId: id});
-  if (sessionId != null) {
-    await Engine.execute(sessionId, 'layer.select', {id});
+  if (sessionId == null) {
+    return;
+  }
+  // Selection does not change pixels — skip the composite invalidation — but
+  // the UI only reflects it after the engine confirms (no optimistic drift).
+  const reply = await Engine.executeNoInvalidate(sessionId, 'layer.select', {id});
+  if (!(reply as {error?: string}).error) {
+    set({activeLayerId: id});
   }
 }
 
@@ -313,11 +338,12 @@ export async function saveNow(): Promise<void> {
   }
   const reply = await Engine.saveDocument(sessionId, projectPath, 'pcraft', 100);
   if ((reply as {error?: string}).error) {
+    set({saveError: (reply as {error?: string}).error});
     throw new Error((reply as {error?: string}).error);
   }
   const thumbPath = await captureThumbnail(sessionId, projectPath);
   await ProjectsStore.upsert({name: docName, path: projectPath, width: doc.width, height: doc.height, thumbPath});
-  set({lastAutosaveAt: Date.now()});
+  set({lastAutosaveAt: Date.now(), saveError: null});
 }
 
 /** Canvas tap → real engine hit-test (topmost layer with pixels there). */
@@ -327,7 +353,7 @@ export async function pickLayerAt(x: number, y: number): Promise<number | null> 
     return null;
   }
   const reply = await engineJson<{layer: number | null}>(
-    Engine.execute(sessionId, 'layer.pickAt', {x: Math.round(x), y: Math.round(y), select: false}),
+    Engine.executeNoInvalidate(sessionId, 'layer.pickAt', {x: Math.round(x), y: Math.round(y), select: false}),
   );
   return reply.layer ?? null;
 }

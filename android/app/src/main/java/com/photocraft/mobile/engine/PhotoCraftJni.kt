@@ -32,8 +32,13 @@ object PhotoCraftJni {
     /** Full engine command registry as a JSON array. */
     external fun nativeCommandList(session: Long): String
 
-    /** Render the active document composite as tightly packed RGBA8 bytes. */
-    external fun nativeRenderRgba(session: Long, maxSide: Int): ByteArray
+    /**
+     * Render the active document composite as tightly packed RGBA8 bytes.
+     * `sizeOut` (LongArray size >= 3) receives `[byteLength, width, height]` —
+     * the frame layout is exact engine output, never derived from the document
+     * aspect. The buffer is `width * height * 4` bytes, `width * 4` per row.
+     */
+    external fun nativeRenderRgba(session: Long, maxSide: Int, sizeOut: LongArray): ByteArray
 
     /** Encode raw RGBA8 into PNG bytes through the engine's codec stack. */
     external fun nativeRgba8ToPng(rgba: ByteArray, width: Int, height: Int): ByteArray

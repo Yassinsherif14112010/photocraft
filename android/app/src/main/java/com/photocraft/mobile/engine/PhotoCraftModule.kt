@@ -16,6 +16,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -34,6 +35,10 @@ class PhotoCraftModule(reactContext: ReactApplicationContext) :
 
     companion object {
         const val NAME = "PhotoCraftEngine"
+
+        /** Commands that do not change pixels — executing them must not
+         *  invalidate the cached composite (selection, hit-testing, reads). */
+        private val NON_MUTATING = setOf("layer.select", "layer.pickAt")
         private val SESSION_ID = AtomicLong(1)
     }
 
@@ -49,11 +54,23 @@ class PhotoCraftModule(reactContext: ReactApplicationContext) :
     override fun getName() = NAME
 
     override fun invalidate() {
-        synchronized(sessions) {
-            sessions.values.forEach { PhotoCraftJni.nativeSessionFree(it) }
-            sessions.clear()
+        // Freeing a native session while a queued task is still executing it
+        // would be a use-after-free. Let the queue drain first (bounded), then
+        // free. If it cannot drain in time, prefer a bounded native leak over
+        // a crash — the dying process reclaims it.
+        engine.shutdown()
+        val drained = try {
+            engine.awaitTermination(4, TimeUnit.SECONDS)
+        } catch (_: InterruptedException) {
+            false
         }
-        engine.shutdownNow()
+        if (drained) {
+            synchronized(sessions) {
+                sessions.values.forEach { PhotoCraftJni.nativeSessionFree(it) }
+                sessions.clear()
+            }
+        }
+        synchronized(pngCache) { pngCache.evictAll() }
         super.invalidate()
     }
 
@@ -74,6 +91,18 @@ class PhotoCraftModule(reactContext: ReactApplicationContext) :
         return handle
     }
 
+    /** App-storage containment — shared by every path-taking entry point. */
+    private fun requireAppPath(path: String): File {
+        val f = File(path)
+        val root = reactApplicationContext.filesDir.canonicalPath
+        val cache = reactApplicationContext.cacheDir.canonicalPath
+        val canonical = f.canonicalFile.absolutePath
+        require(canonical.startsWith(root) || canonical.startsWith(cache)) {
+            "path escapes app storage"
+        }
+        return f
+    }
+
     // -------------------------------------------------------------- lifecycle
 
     @ReactMethod
@@ -84,13 +113,18 @@ class PhotoCraftModule(reactContext: ReactApplicationContext) :
     @ReactMethod
     fun engineCommands(promise: Promise) {
         engine.execute {
-            val id = SESSION_ID.get()
-            val handle = PhotoCraftJni.nativeSessionNew()
-            synchronized(sessions) { sessions[id] = handle }
-            val out = Arguments.createMap()
-            out.putDouble("sessionId", id.toDouble())
-            out.putString("commands", PhotoCraftJni.nativeCommandList(handle))
-            promise.resolve(out)
+            try {
+                val id = SESSION_ID.getAndIncrement()
+                val handle = PhotoCraftJni.nativeSessionNew()
+                if (handle == 0L) error("engine session allocation failed")
+                synchronized(sessions) { sessions[id] = handle }
+                val out = Arguments.createMap()
+                out.putDouble("sessionId", id.toDouble())
+                out.putString("commands", PhotoCraftJni.nativeCommandList(handle))
+                promise.resolve(out)
+            } catch (e: Throwable) {
+                promise.reject("ENGINE", e.message ?: "session allocation failed", e)
+            }
         }
     }
 
@@ -100,6 +134,7 @@ class PhotoCraftModule(reactContext: ReactApplicationContext) :
             val id = sessionId.toLong()
             val handle = synchronized(sessions) { sessions.remove(id) }
             if (handle != null) PhotoCraftJni.nativeSessionFree(handle)
+            synchronized(pngCache) { pngCache.evictAll() }
             promise.resolve(true)
         }
     }
@@ -127,6 +162,26 @@ class PhotoCraftModule(reactContext: ReactApplicationContext) :
     /** Convenience: `engine.execute` with command + params. */
     @ReactMethod
     fun execute(sessionId: Double, command: String, params: ReadableMap, promise: Promise) {
+        executeInternal(sessionId, command, params, invalidateCache = true, promise = promise)
+    }
+
+    /**
+     * Execute with explicit cache control: `invalidateCache=false` skips the
+     * composite-cache eviction for commands that cannot change pixels
+     * (selection, hit-testing) so the canvas is not needlessly re-rendered.
+     */
+    @ReactMethod
+    fun executeNoInvalidate(sessionId: Double, command: String, params: ReadableMap, promise: Promise) {
+        executeInternal(sessionId, command, params, invalidateCache = false, promise = promise)
+    }
+
+    private fun executeInternal(
+        sessionId: Double,
+        command: String,
+        params: ReadableMap,
+        invalidateCache: Boolean,
+        promise: Promise,
+    ) {
         engine.execute {
             try {
                 val handle = requireSession(sessionId.toLong())
@@ -137,7 +192,8 @@ class PhotoCraftModule(reactContext: ReactApplicationContext) :
                 val reply = PhotoCraftJni.nativeCall(handle, "engine.execute", body.toString())
                 // Mutations change the composite — stale cached renders must not
                 // survive a successful execute (canvas + thumbnails re-render).
-                if (!JSONObject(reply).has("error")) {
+                val mustInvalidate = invalidateCache && !NON_MUTATING.contains(command)
+                if (mustInvalidate && !JSONObject(reply).has("error")) {
                     synchronized(pngCache) { pngCache.evictAll() }
                 }
                 respond(promise, reply)
@@ -176,14 +232,22 @@ class PhotoCraftModule(reactContext: ReactApplicationContext) :
     /**
      * Open a document from a local file (PSD/PSB/PNG/JPEG/WebP/SVG/.pcraft — anything
      * the engine imports). The engine parses it; warnings come back in the reply.
+     * The path must live in app storage (the picker staging area is inside cacheDir).
      */
     @ReactMethod
     fun openDocument(sessionId: Double, path: String, promise: Promise) {
         engine.execute {
             try {
+                requireAppPath(path)
                 val handle = requireSession(sessionId.toLong())
                 val body = JSONObject().put("path", path)
-                respond(promise, PhotoCraftJni.nativeCall(handle, "doc.open", body.toString()))
+                val reply = PhotoCraftJni.nativeCall(handle, "doc.open", body.toString())
+                // A different document is now active in this session — the old
+                // cached composite must not survive the switch.
+                if (!JSONObject(reply).has("error")) {
+                    synchronized(pngCache) { pngCache.evictAll() }
+                }
+                respond(promise, reply)
             } catch (e: Exception) {
                 promise.reject("OPEN", e.message, e)
             }
@@ -198,6 +262,7 @@ class PhotoCraftModule(reactContext: ReactApplicationContext) :
     fun saveDocument(sessionId: Double, path: String, format: String, quality: Int, promise: Promise) {
         engine.execute {
             try {
+                requireAppPath(path)
                 val handle = requireSession(sessionId.toLong())
                 val body = JSONObject()
                     .put("path", path)
@@ -225,10 +290,11 @@ class PhotoCraftModule(reactContext: ReactApplicationContext) :
                 val key = "$sessionId:$maxSide"
                 val cached = synchronized(pngCache) { pngCache.get(key) }
                 val png = cached ?: run {
-                    val rgba = PhotoCraftJni.nativeRenderRgba(handle, maxSide)
-                    if (rgba.isEmpty()) error("render failed")
-                    val w = readRgbaSize(handle, maxSide)
-                    val encoded = PhotoCraftJni.nativeRgba8ToPng(rgba, w.first, w.second)
+                    val sizes = LongArray(3)
+                    val rgba = PhotoCraftJni.nativeRenderRgba(handle, maxSide, sizes)
+                    if (rgba.isEmpty() || sizes[1] <= 0 || sizes[2] <= 0) error("render failed")
+                    val encoded = PhotoCraftJni.nativeRgba8ToPng(rgba, sizes[1].toInt(), sizes[2].toInt())
+                    if (encoded.isEmpty()) error("thumbnail encoding failed")
                     synchronized(pngCache) { pngCache.put(key, encoded) }
                     encoded
                 }
@@ -240,17 +306,17 @@ class PhotoCraftModule(reactContext: ReactApplicationContext) :
         }
     }
 
-    /** The engine returns the PNG-decoded composite; recover its pixel size from the bitmap. */
-    private fun readRgbaSize(handle: Long, maxSide: Int): Pair<Int, Int> {
-        // Re-render through PNG to obtain exact bounds (cheap: decode of header only).
-        val json = PhotoCraftJni.nativeCall(handle, "doc.inspect", "{}")
-        val doc = JSONObject(json).optJSONObject("document") ?: JSONObject()
-        val w = doc.optInt("width", 0)
-        val h = doc.optInt("height", 0)
-        if (w <= 0 || h <= 0) return Pair(maxSide, maxSide)
-        val scale = maxSide.toFloat() / maxOf(w, h).toFloat()
-        val fit = if (scale < 1f) scale else 1f
-        return Pair((w * fit).toInt().coerceAtLeast(1), (h * fit).toInt().coerceAtLeast(1))
+    /** Real file size in bytes (export verification: a 0-byte export is a failure). */
+    @ReactMethod
+    fun fileSize(path: String, promise: Promise) {
+        engine.execute {
+            try {
+                val f = requireAppPath(path)
+                promise.resolve(if (f.exists()) f.length().toDouble() else -1.0)
+            } catch (e: Exception) {
+                promise.reject("STAT", e.message, e)
+            }
+        }
     }
 
     /** Decode helper used by the AI modules when they need a Bitmap from RGBA bytes. */

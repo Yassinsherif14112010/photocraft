@@ -17,6 +17,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.Base64
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * RN module: local PaddleOCR text detection + recognition (Arabic + English).
@@ -33,18 +34,32 @@ class OcrModule(private val reactContext: ReactApplicationContext) :
     }
 
     private val executor = Executors.newSingleThreadExecutor { r -> Thread(r, "photocraft-ocr") }
-    private val engine by lazy { OcrEngine(reactContext) }
+
+    @Volatile
+    private var engine: OcrEngine? = null
 
     override fun getName() = NAME
 
     override fun invalidate() {
-        engine.close()
-        executor.shutdownNow()
+        // Closing OrtSessions while recognize() is mid-inference is undefined
+        // behaviour in ONNX Runtime — drain the queue first.
+        executor.shutdown()
+        val drained = try {
+            executor.awaitTermination(3, TimeUnit.SECONDS)
+        } catch (_: InterruptedException) {
+            false
+        }
+        if (drained) {
+            engine?.close()
+            engine = null
+        }
         super.invalidate()
     }
 
+    private fun orCreate(): OcrEngine = engine ?: OcrEngine(reactContext).also { engine = it }
+
     @ReactMethod
-    fun isModelReady(promise: Promise) = promise.resolve(engine.isReady())
+    fun isModelReady(promise: Promise) = promise.resolve(orCreate().isReady())
 
     @ReactMethod
     fun modelsDir(promise: Promise) = promise.resolve(
@@ -61,7 +76,7 @@ class OcrModule(private val reactContext: ReactApplicationContext) :
         executor.execute {
             try {
                 val bmp = decode(image)
-                val results = engine.recognize(bmp)
+                val results = (engine ?: orCreate()).recognize(bmp)
                 val arr = JSONArray()
                 for (r in results) {
                     arr.put(

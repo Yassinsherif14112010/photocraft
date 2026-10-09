@@ -45,13 +45,16 @@ class BackgroundRemovalEngine(context: Context) {
 
     /**
      * Run matting and return an ARGB bitmap whose alpha channel is the predicted
-     * subject mask (colours preserved from the source). Caller applies it to the
-     * document as a cutout or a layer mask. `inputSize` picks the network input
+     * subject mask (colours preserved from the source at full resolution — the
+     * square network output is bilinearly restored to the source aspect, so
+     * non-square images are never squashed). Caller applies it to the document
+     * as a cutout or a layer mask. `inputSize` picks the network input
      * (512 for the quick preview, 1024 for HQ).
      */
     fun removeBackground(src: Bitmap, inputSize: Int = INPUT_SIZE): Bitmap {
         val matte = matteOf(src, inputSize)
-        return MatteRefine.compose(src, matte, inputSize)
+        val full = MatteRefine.resample(matte, inputSize, src.width, src.height)
+        return MatteRefine.composeFullRes(src, full)
     }
 
     /** Extract the raw matte (0..1, row-major, inputSize×inputSize). */

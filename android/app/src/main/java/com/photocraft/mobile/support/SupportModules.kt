@@ -192,6 +192,8 @@ class DocumentPickerModule(private val reactContext: ReactApplicationContext) :
             promise.reject("NO_ACTIVITY", "no foreground activity")
             return
         }
+        // A previous pick that never returned must not hang its caller forever.
+        pending?.resolve(null)
         pending = promise
         val types = ArrayList<String>(mimeTypes.size())
         for (i in 0 until mimeTypes.size()) {

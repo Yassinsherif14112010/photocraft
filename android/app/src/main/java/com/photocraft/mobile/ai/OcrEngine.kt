@@ -74,11 +74,14 @@ class OcrEngine(context: Context) {
         }
     }
 
-    /** Run the full OCR pipeline. Returns boxes in source-image pixel coordinates. */
+    /**
+     * Run the full OCR pipeline. Returns boxes in **source-image pixel
+     * coordinates** (the pipeline internally downscales and pads, then maps
+     * every box back, so callers can use document coordinates directly).
+     */
     fun recognize(bitmap: Bitmap, maxSide: Int = 1280): List<OcrBox> {
         ensureSessions()
         val scaled = downscale(bitmap, maxSide)
-        val scale = scaled.width.toFloat() / bitmap.width.toFloat()
 
         // ---------------- detection ----------------
         val detH = round32(scaled.height)
@@ -88,10 +91,17 @@ class OcrEngine(context: Context) {
         val boxes = AiGeometry.dbBoxes(detProb, detW / 4, detH / 4, threshold = 0.3f, unclipRatio = 1.6f)
             .map { b -> AiGeometry.Box(b.x * 4f, b.y * 4f, b.w * 4f, b.h * 4f, b.angleRad) }
 
+        // Detection boxes are in padded coordinates. Map everything back to the
+        // source bitmap so the caller gets document-space geometry (uniform
+        // scale because padTo only extends, never offsets or distorts).
+        val toSourceX = bitmap.width.toFloat() / padded.width.toFloat()
+        val toSourceY = bitmap.height.toFloat() / padded.height.toFloat()
+
         // ---------------- recognition ----------------
         val results = ArrayList<OcrBox>(boxes.size)
         for (box in boxes) {
             val crop = AiGeometry.rotatedCrop(padded, box)
+            if (crop.width <= 0 || crop.height <= 0) continue
             val h = 48
             val w = ((crop.width.toFloat() / crop.height.toFloat()) * h).toInt().coerceIn(16, 640)
             val resized = Bitmap.createScaledBitmap(crop, w, h, true)
@@ -100,7 +110,17 @@ class OcrEngine(context: Context) {
                 logits.first, logits.second, logits.third, dict, useSpace = true
             )
             if (text.isNotBlank() && conf > 0.45f) {
-                results.add(OcrBox(text, conf, box.x, box.y, box.w, box.h, box.angleRad))
+                results.add(
+                    OcrBox(
+                        text,
+                        conf,
+                        box.x * toSourceX,
+                        box.y * toSourceY,
+                        box.w * toSourceX,
+                        box.h * toSourceY,
+                        box.angleRad,
+                    )
+                )
             }
         }
         return results

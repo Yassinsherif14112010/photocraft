@@ -5,9 +5,9 @@
  * layer is toggled through real `layer.setProps` visibility), quality and
  * resample controls, document metadata (`file.fileInfo`) and batch exports.
  */
-import {Engine, engineJson} from '../../native/PhotoCraftEngine';
+import {Engine, engineJson, FileIO} from '../../native/PhotoCraftEngine';
 import {getState} from '../DocumentStore';
-import {exportsDir} from '../paths';
+import {exportsDir, tmpDir} from '../paths';
 import type {SmartPreset} from '../types';
 
 export type ExportFormat = 'png' | 'jpg' | 'webp' | 'psd' | 'psb' | 'pcraft';
@@ -63,51 +63,87 @@ export const ExportCenter = {
     const name = `photocraft-${stamp}${opts.socialPreset ? `-${opts.socialPreset.id}` : ''}.${opts.format}`;
     const path = `${EXPORTS_DIR()}/${name}`;
 
-    // Optional preset/scale sizing happens as a real `image.imageSize` resample,
-    // so the exported pixels are exactly what the engine composited.
-    const {doc} = getState();
-    if (opts.socialPreset) {
-      await engineJson(
-        Engine.execute(sessionId, 'image.imageSize', {
-          width: opts.socialPreset.width,
-          height: opts.socialPreset.height,
-          resample: opts.resample ?? 'bicubic',
-        }),
-      );
-    } else if (opts.scalePct !== undefined && opts.scalePct !== 100 && doc) {
-      await engineJson(
-        Engine.execute(sessionId, 'image.imageSize', {
-          width: Math.max(1, Math.round((doc.width * opts.scalePct) / 100)),
-          height: Math.max(1, Math.round((doc.height * opts.scalePct) / 100)),
-          resample: opts.resample ?? 'bicubic',
-        }),
-      );
-    }
+    const needsScale =
+      !!opts.socialPreset ||
+      (opts.scalePct !== undefined && opts.scalePct !== 100 && !!getState().doc);
 
-    // Transparency: hide the bottom (background) layer for the write, then restore.
-    const hid: number | null = opts.transparent && (opts.format === 'png' || opts.format === 'webp')
-      ? backgroundLayerId()
-      : null;
-    if (hid != null) {
-      await engineJson(Engine.execute(sessionId, 'layer.setProps', {layer: hid, visible: false, coalesce: true}));
-    }
-
-    let result: ExportResult;
+    /**
+     * Scale-on-export must NEVER resample the live document: the working copy
+     * would come back resized on the next autosave. Instead the current state
+     * is snapshotted to a temp .pcraft, opened in its own engine session,
+     * resized there, exported, and the temp session + file are released.
+     */
+    let exportSessionId = sessionId;
+    let tempPath: string | null = null;
     try {
-      const reply = await engineJson<{saved?: {bytes: number}; warnings?: string[]}>(
-        Engine.saveDocument(sessionId, path, opts.format, opts.quality ?? 92),
-      );
-      result = {
-        path,
-        bytes: reply.saved?.bytes ?? 0,
-        warnings: reply.warnings ?? [],
-      };
-    } finally {
+      if (needsScale) {
+        tempPath = `${tmpDir()}/export-${stamp}.pcraft`;
+        const snap = await Engine.saveDocument(sessionId, tempPath, 'pcraft', 100);
+        if ((snap as {error?: string}).error) {
+          throw new Error((snap as {error?: string}).error);
+        }
+        const opened = await Engine.engineCommands();
+        exportSessionId = opened.sessionId;
+        await engineJson(Engine.openDocument(exportSessionId, tempPath));
+
+        if (opts.socialPreset) {
+          await engineJson(
+            Engine.execute(exportSessionId, 'image.imageSize', {
+              width: opts.socialPreset.width,
+              height: opts.socialPreset.height,
+              resample: opts.resample ?? 'bicubic',
+            }),
+          );
+        } else {
+          const {doc} = getState();
+          await engineJson(
+            Engine.execute(exportSessionId, 'image.imageSize', {
+              width: Math.max(1, Math.round(((doc?.width ?? 0) * (opts.scalePct ?? 100)) / 100)),
+              height: Math.max(1, Math.round(((doc?.height ?? 0) * (opts.scalePct ?? 100)) / 100)),
+              resample: opts.resample ?? 'bicubic',
+            }),
+          );
+        }
+      }
+
+      // Transparency: hide the bottom (background) layer for the write, then restore.
+      const hid: number | null = opts.transparent && (opts.format === 'png' || opts.format === 'webp')
+        ? backgroundLayerId()
+        : null;
       if (hid != null) {
-        await engineJson(Engine.execute(sessionId, 'layer.setProps', {layer: hid, visible: true, coalesce: true}));
+        await engineJson(Engine.execute(sessionId, 'layer.setProps', {layer: hid, visible: false, coalesce: true}));
+      }
+
+      let result: ExportResult;
+      try {
+        const reply = await engineJson<{warnings?: string[]}>(
+          Engine.saveDocument(exportSessionId, path, opts.format, opts.quality ?? 92),
+        );
+        // Verify the output really exists and is not empty — a 0-byte file or a
+        // missing file is an export failure, never a success with a bad path.
+        const stat = await Engine.fileSize(path);
+        if (stat == null || stat <= 0) {
+          throw new Error(`export produced no file (${stat} bytes): ${path}`);
+        }
+        result = {
+          path,
+          bytes: stat,
+          warnings: reply.warnings ?? [],
+        };
+      } finally {
+        if (hid != null) {
+          await engineJson(Engine.execute(sessionId, 'layer.setProps', {layer: hid, visible: true, coalesce: true}));
+        }
+      }
+      return result;
+    } finally {
+      if (exportSessionId !== sessionId) {
+        await Engine.closeSession(exportSessionId).catch(() => {});
+      }
+      if (tempPath) {
+        await FileIO?.deleteFile(tempPath).catch(() => {});
       }
     }
-    return result;
   },
 
   /**

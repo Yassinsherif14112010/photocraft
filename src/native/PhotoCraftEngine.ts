@@ -39,6 +39,8 @@ export interface PhotoCraftEngineNative {
   closeSession(sessionId: number): Promise<boolean>;
   call(sessionId: number, method: string, params: object): Promise<EngineReply>;
   execute(sessionId: number, command: string, params: object): Promise<EngineReply>;
+  /** Execute without evicting the composite cache (selection / hit-test only). */
+  executeNoInvalidate(sessionId: number, command: string, params: object): Promise<EngineReply>;
   openDocument(sessionId: number, path: string): Promise<EngineReply>;
   saveDocument(
     sessionId: number,
@@ -49,6 +51,8 @@ export interface PhotoCraftEngineNative {
   renderThumbnail(sessionId: number, maxSide: number): Promise<string>;
   /** Read a file from app storage as base64 (inbox images for OCR / BG removal). */
   readFileBase64(path: string): Promise<string>;
+  /** Real file size in bytes (-1 when missing) — verifies exports are non-empty. */
+  fileSize(path: string): Promise<number>;
 }
 
 export interface OcrEngineNative {

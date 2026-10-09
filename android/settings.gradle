@@ -9,4 +9,9 @@ dependencyResolutionManagement {
     }
 }
 
+// Provides com.facebook.react:react-native-gradle-plugin for the root
+// buildscript classpath (required: without it the React Gradle plugin does
+// not resolve and every Gradle invocation fails at configuration time).
+includeBuild('../node_modules/@react-native/gradle-plugin')
+
 include ':app'

@@ -82,12 +82,15 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:hermes-android")
     debugImplementation("com.facebook.flipper:flipper:0.260.0")
-    debugImplementation("com.facebook.solosnapshot:soloader:0.11.0")
+    // Merged-So mapping support (OpenSourceMergedSoMapping in MainApplication).
+    implementation("com.facebook.soloader:soloader:0.11.0")
 
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
+    // Required by the manifest theme (Theme.MaterialComponents.DayNight.*).
+    implementation("com.google.android.material:material:1.12.0")
 
     // Local on-device AI: OCR (PaddleOCR det/rec) + Background Removal (BiRefNet Lite).
     // 100% offline ONNX Runtime — no cloud, no paid API.
