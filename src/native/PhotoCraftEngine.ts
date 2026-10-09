@@ -77,14 +77,30 @@ export interface FileTextNative {
   readTextFile(path: string): Promise<string>;
   /** Copy a content:// URI (document picker) into app storage; returns the path. */
   copyUriToCache(uri: string, name: string): Promise<string>;
+  /** Write binary data (base64) — engine-rendered project thumbnails. */
+  writeBase64File(path: string, base64: string): Promise<boolean>;
+  /** Delete a file inside app storage. */
+  deleteFile(path: string): Promise<boolean>;
+  /** Rename/move a file within app storage. */
+  moveFile(from: string, to: string): Promise<boolean>;
+  /** Copy a file within app storage; returns the new path. */
+  copyFile(from: string, to: string): Promise<string>;
+  /** The real application filesDir (single source of truth for paths). */
+  filesDir(): Promise<string>;
 }
 
-const {PhotoCraftEngine, OcrEngine, BackgroundRemoval, PhotoCraftAssets, FileText} = NativeModules as {
+export interface DocumentPickerNative {
+  /** Open the system SAF picker. Resolves a content:// Uri, or null on cancel. */
+  pickDocument(mimeTypes: string[]): Promise<string | null>;
+}
+
+const {PhotoCraftEngine, OcrEngine, BackgroundRemoval, PhotoCraftAssets, FileText, DocumentPicker} = NativeModules as {
   PhotoCraftEngine: PhotoCraftEngineNative;
   OcrEngine: OcrEngineNative;
   BackgroundRemoval: BackgroundRemovalNative;
   PhotoCraftAssets?: PhotoCraftAssetsNative;
   FileText?: FileTextNative;
+  DocumentPicker?: DocumentPickerNative;
 };
 
 if (!PhotoCraftEngine) {
@@ -98,6 +114,7 @@ export const Ocr = OcrEngine;
 export const BgRemoval = BackgroundRemoval;
 export const Assets = PhotoCraftAssets;
 export const FileIO = FileText;
+export const Picker = DocumentPicker;
 
 /** Parse an engine reply into a JSON object or throw. */
 export async function engineJson<T>(

@@ -5,13 +5,12 @@
  * enforces app-storage-only paths).
  */
 import {Engine} from '../native/PhotoCraftEngine';
-
-export const INBOX_IMAGE = '/data/data/com.photocraft.mobile/files/inbox/last.png';
+import {inboxImagePath} from './paths';
 
 /** The staged inbox image as a data URL, or null when nothing was shared. */
 export async function loadInboxAsDataUrl(): Promise<string | null> {
   try {
-    const b64 = await Engine.readFileBase64(INBOX_IMAGE);
+    const b64 = await Engine.readFileBase64(inboxImagePath());
     if (!b64) {
       return null;
     }

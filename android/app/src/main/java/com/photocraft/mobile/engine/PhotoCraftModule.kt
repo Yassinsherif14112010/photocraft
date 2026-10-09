@@ -134,7 +134,13 @@ class PhotoCraftModule(reactContext: ReactApplicationContext) :
                 val body = JSONObject()
                     .put("command", command)
                     .put("params", cmdParams)
-                respond(promise, PhotoCraftJni.nativeCall(handle, "engine.execute", body.toString()))
+                val reply = PhotoCraftJni.nativeCall(handle, "engine.execute", body.toString())
+                // Mutations change the composite — stale cached renders must not
+                // survive a successful execute (canvas + thumbnails re-render).
+                if (!JSONObject(reply).has("error")) {
+                    synchronized(pngCache) { pngCache.evictAll() }
+                }
+                respond(promise, reply)
             } catch (e: Exception) {
                 promise.reject("ENGINE", e.message ?: "engine execute failed", e)
             }

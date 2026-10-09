@@ -14,6 +14,7 @@ import com.photocraft.mobile.ai.OcrModule
 import com.photocraft.mobile.ai.BackgroundRemovalModule
 import com.photocraft.mobile.engine.PhotoCraftModule
 import com.photocraft.mobile.support.AssetsModule
+import com.photocraft.mobile.support.DocumentPickerModule
 import com.photocraft.mobile.support.FileTextModule
 
 class MainApplication : Application(), ReactApplication {
@@ -49,6 +50,7 @@ class PhotoCraftAppPackage : ReactPackage {
             OcrModule(reactContext),
             BackgroundRemovalModule(reactContext),
             FileTextModule(reactContext),
+            DocumentPickerModule(reactContext),
             AssetsModule(reactContext),
         )
 

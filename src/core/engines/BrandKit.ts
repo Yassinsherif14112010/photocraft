@@ -9,10 +9,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Editor} from '../DocumentStore';
 import {LayerStyles} from './LayerStyles';
 import {FileIO} from '../../native/PhotoCraftEngine';
+import {brandKitDir} from '../paths';
 import type {EffectSpec} from './LayerStyles';
 
 const KEY = 'pc.brandkit.v1';
-const KIT_DIR = '/data/data/com.photocraft.mobile/files/brandkit';
+const KIT_DIR = () => brandKitDir();
 
 export interface BrandKit {
   name: string;
@@ -129,7 +130,7 @@ export const BrandKitStore = {
   /** Export the kit as a `.pcbrand` JSON file in app storage. */
   async exportKit(kit: BrandKit): Promise<string> {
     const safe = kit.name.replace(/[^\w\u0600-\u06FF-]+/g, '_') || 'brand';
-    const path = `${KIT_DIR}/${safe}-${Date.now()}.pcbrand`;
+    const path = `${KIT_DIR()}/${safe}-${Date.now()}.pcbrand`;
     if (!FileIO) {
       throw new Error('native file IO missing — rebuild the app');
     }

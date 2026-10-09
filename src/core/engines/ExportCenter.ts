@@ -7,6 +7,7 @@
  */
 import {Engine, engineJson} from '../../native/PhotoCraftEngine';
 import {getState} from '../DocumentStore';
+import {exportsDir} from '../paths';
 import type {SmartPreset} from '../types';
 
 export type ExportFormat = 'png' | 'jpg' | 'webp' | 'psd' | 'psb' | 'pcraft';
@@ -48,7 +49,7 @@ export const EXPORT_PROFILES: ExportProfile[] = [
   {id: 'big-psb', name: 'Large PSB', nameAr: 'ملف PSB كبير', opts: {format: 'psb', quality: 100, scalePct: 100}},
 ];
 
-const EXPORTS_DIR = '/data/data/com.photocraft.mobile/files/exports';
+const EXPORTS_DIR = () => exportsDir();
 
 export const ExportCenter = {
   /**
@@ -60,7 +61,7 @@ export const ExportCenter = {
   async export(sessionId: number, opts: ExportOptions): Promise<ExportResult> {
     const stamp = Date.now();
     const name = `photocraft-${stamp}${opts.socialPreset ? `-${opts.socialPreset.id}` : ''}.${opts.format}`;
-    const path = `${EXPORTS_DIR}/${name}`;
+    const path = `${EXPORTS_DIR()}/${name}`;
 
     // Optional preset/scale sizing happens as a real `image.imageSize` resample,
     // so the exported pixels are exactly what the engine composited.

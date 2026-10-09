@@ -5,10 +5,11 @@
  * (`edit.undo` / `edit.redo` are real engine commands, not JS copies).
  */
 import {useSyncExternalStore} from 'react';
-import {Engine, engineJson} from '../native/PhotoCraftEngine';
+import {Engine, engineJson, FileIO} from '../native/PhotoCraftEngine';
 import {blendFromLabel} from './types';
 import type {DocumentInfo, LayerSummary, Rect4} from './types';
-import {ProjectsStore, FILES_DIR} from './ProjectsStore';
+import {ProjectsStore, thumbPathFor} from './ProjectsStore';
+import {projectsDir} from './paths';
 
 export interface EditorState {
   sessionId: number | null;
@@ -143,7 +144,7 @@ export async function newDocument(name: string, width: number, height: number, d
     // `doc.new` runs the engine's `file.new` (`resolution` is the DPI field).
     await engineJson(Engine.call(sessionId, 'doc.new', {name, width, height, resolution: dpi, background: 'white'}));
     const info = await inspect(sessionId);
-    const projectPath = `${FILES_DIR}/projects/${safeName(name)}-${Date.now()}.pcraft`;
+    const projectPath = `${projectsDir()}/${safeName(name)}-${Date.now()}.pcraft`;
     set({sessionId, busy: false, error: null, projectPath, canvasVersion: 0, ...(info as object)});
   } catch (e: any) {
     set({busy: false, error: String(e?.message ?? e)});
@@ -195,6 +196,26 @@ function scheduleAutosave() {
   }, 1400);
 }
 
+/**
+ * Render the real composite via the engine and write it beside the project
+ * file — Home shows this PNG as the project thumbnail. Failures are silent:
+ * a missing thumbnail falls back to the placeholder glyph.
+ */
+async function captureThumbnail(sessionId: number, projectPath: string): Promise<string | undefined> {
+  try {
+    const dataUrl = await Engine.renderThumbnail(sessionId, 360);
+    const b64 = dataUrl.includes(',') ? dataUrl.slice(dataUrl.indexOf(',') + 1) : dataUrl;
+    if (!b64) {
+      return undefined;
+    }
+    const tp = thumbPathFor(projectPath);
+    await FileIO?.writeBase64File(tp, b64);
+    return tp;
+  } catch {
+    return undefined;
+  }
+}
+
 async function autoSaveNow() {
   const {sessionId, projectPath, docName, doc} = state;
   if (sessionId == null || !projectPath || !doc) {
@@ -202,7 +223,8 @@ async function autoSaveNow() {
   }
   const reply = await Engine.saveDocument(sessionId, projectPath, 'pcraft', 100);
   if (!(reply as {error?: string}).error) {
-    await ProjectsStore.upsert({name: docName, path: projectPath, width: doc.width, height: doc.height});
+    const thumbPath = await captureThumbnail(sessionId, projectPath);
+    await ProjectsStore.upsert({name: docName, path: projectPath, width: doc.width, height: doc.height, thumbPath});
     set({lastAutosaveAt: Date.now()});
   }
 }
@@ -293,7 +315,8 @@ export async function saveNow(): Promise<void> {
   if ((reply as {error?: string}).error) {
     throw new Error((reply as {error?: string}).error);
   }
-  await ProjectsStore.upsert({name: docName, path: projectPath, width: doc.width, height: doc.height});
+  const thumbPath = await captureThumbnail(sessionId, projectPath);
+  await ProjectsStore.upsert({name: docName, path: projectPath, width: doc.width, height: doc.height, thumbPath});
   set({lastAutosaveAt: Date.now()});
 }
 

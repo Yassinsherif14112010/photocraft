@@ -4,8 +4,9 @@
  * sheets, toasts, segmented indicators) so the whole app feels alive without
  * adding native dependencies. Everything is theme-aware and RTL-safe.
  */
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore} from 'react';
 import {
+  AccessibilityInfo,
   Animated,
   Easing,
   KeyboardAvoidingView,
@@ -22,6 +23,31 @@ import {
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import {Palette, useTheme} from '../theme';
+
+// -------------------------------------------------------- reduced motion
+
+let reduceMotion = false;
+const rmListeners = new Set<() => void>();
+function setReduceMotion(v: boolean) {
+  if (v !== reduceMotion) {
+    reduceMotion = v;
+    rmListeners.forEach(l => l());
+  }
+}
+AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion).catch(() => {});
+AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+
+/** True when the OS asks for reduced motion — animations collapse to fades. */
+export function useReducedMotion(): boolean {
+  return useSyncExternalStore(
+    l => {
+      rmListeners.add(l);
+      return () => rmListeners.delete(l);
+    },
+    () => reduceMotion,
+    () => false,
+  );
+}
 
 // ---------------------------------------------------------------- Pressable
 
@@ -42,14 +68,28 @@ export function PressableScale({
   accessibilityLabel?: string;
 }) {
   const anim = useRef(new Animated.Value(1)).current;
+  const reduce = useReducedMotion();
   const pressIn = useCallback(() => {
+    if (reduce) {
+      return; // respect reduced-motion: no scale bounce
+    }
     Animated.spring(anim, {toValue: scaleTo, useNativeDriver: true, speed: 40, bounciness: 4}).start();
-  }, [anim, scaleTo]);
+  }, [anim, scaleTo, reduce]);
   const pressOut = useCallback(() => {
+    if (reduce) {
+      return;
+    }
     Animated.spring(anim, {toValue: 1, useNativeDriver: true, speed: 30, bounciness: 6}).start();
-  }, [anim]);
+  }, [anim, reduce]);
   return (
-    <Pressable onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} disabled={disabled} accessibilityLabel={accessibilityLabel}>
+    <Pressable
+      onPress={onPress}
+      onPressIn={pressIn}
+      onPressOut={pressOut}
+      disabled={disabled}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      accessibilityState={{disabled: !!disabled}}>
       <Animated.View style={[{transform: [{scale: anim}]}, style]}>{children}</Animated.View>
     </Pressable>
   );
@@ -71,8 +111,8 @@ export function PrimaryButton({
   const c = useTheme();
   const bg = tone === 'accent' ? c.accent : tone === 'danger' ? c.danger : c.surface3;
   return (
-    <PressableScale onPress={onPress} disabled={disabled} scaleTo={0.97}>
-      <View style={[styles.primaryBtn, {backgroundColor: bg}, disabled && {opacity: 0.4}]}>
+    <PressableScale onPress={onPress} disabled={disabled} scaleTo={0.97} accessibilityLabel={label}>
+      <View style={[styles.primaryBtn, {backgroundColor: bg}, disabled && {opacity: 0.4}]} accessibilityRole="button">
         <Text style={[styles.primaryBtnText, {color: tone === 'neutral' ? c.text : c.onAccent}]}>{label}</Text>
       </View>
     </PressableScale>
@@ -82,8 +122,8 @@ export function PrimaryButton({
 export function GhostButton({label, onPress, color}: {label: string; onPress?: () => void; color?: string}) {
   const c = useTheme();
   return (
-    <PressableScale onPress={onPress}>
-      <View style={styles.ghostBtn}>
+    <PressableScale onPress={onPress} accessibilityLabel={label}>
+      <View style={styles.ghostBtn} accessibilityRole="button">
         <Text style={[styles.ghostBtnText, {color: color ?? c.accent2}]}>{label}</Text>
       </View>
     </PressableScale>
@@ -141,8 +181,10 @@ export function Chip({
 }) {
   const c = useTheme();
   return (
-    <PressableScale onPress={onPress} scaleTo={0.94}>
+    <PressableScale onPress={onPress} accessibilityLabel={label} scaleTo={0.94}>
       <View
+        accessibilityRole={onPress ? 'button' : undefined}
+        accessibilityState={onPress ? {selected: !!active} : undefined}
         style={[
           styles.chip,
           small && styles.chipSmall,
@@ -269,7 +311,7 @@ export function SwitchRow({label, value, onChange}: {label: string; value: boole
   return (
     <View style={[styles.switchRow, {borderColor: c.border}]}>
       <Text style={[styles.switchLabel, {color: c.text}]}>{label}</Text>
-      <Switch value={value} onValueChange={onChange} trackColor={{true: c.accent, false: c.surface3}} thumbColor="#fff" />
+      <Switch value={value} onValueChange={onChange} trackColor={{true: c.accent, false: c.surface3}} thumbColor="#fff" accessibilityLabel={label} />
     </View>
   );
 }
@@ -321,6 +363,9 @@ export function SearchBar({value, onChange, placeholder}: {value: string; onChan
         onChangeText={onChange}
         placeholder={placeholder}
         placeholderTextColor={c.textFaint}
+        accessibilityLabel={placeholder}
+        returnKeyType="search"
+        clearButtonMode="while-editing"
       />
       {value.length > 0 && (
         <Pressable onPress={() => onChange('')} hitSlop={8}>
@@ -387,13 +432,14 @@ export function Sheet({
 }) {
   const c = useTheme();
   const anim = useRef(new Animated.Value(0)).current;
+  const reduce = useReducedMotion();
   useEffect(() => {
-    Animated.timing(anim, {toValue: visible ? 1 : 0, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
-  }, [visible, anim]);
+    Animated.timing(anim, {toValue: visible ? 1 : 0, duration: reduce ? 80 : 240, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
+  }, [visible, anim, reduce]);
   if (!visible) {
     return null;
   }
-  const translateY = anim.interpolate({inputRange: [0, 1], outputRange: [600, 0]});
+  const translateY = anim.interpolate({inputRange: [0, 1], outputRange: reduce ? [0, 0] : [600, 0]});
   return (
     <Modal transparent visible={visible} onRequestClose={onClose} animationType="none" statusBarTranslucent>
       <Animated.View style={[styles.sheetScrim, {backgroundColor: c.scrim, opacity: anim}]}>
@@ -420,9 +466,10 @@ export function Sheet({
 export function FullModal({visible, onClose, title, subtitle, children}: {visible: boolean; onClose: () => void; title: string; subtitle?: string; children: React.ReactNode}) {
   const c = useTheme();
   const anim = useRef(new Animated.Value(0)).current;
+  const reduce = useReducedMotion();
   useEffect(() => {
-    Animated.timing(anim, {toValue: visible ? 1 : 0, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
-  }, [visible, anim]);
+    Animated.timing(anim, {toValue: visible ? 1 : 0, duration: reduce ? 80 : 220, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
+  }, [visible, anim, reduce]);
   if (!visible) {
     return null;
   }
@@ -485,10 +532,15 @@ export function ToastHost() {
 
 function ToastCard({item, toneColor, bg, fg}: {item: ToastItem; toneColor: string; bg: string; fg: string}) {
   const anim = useRef(new Animated.Value(0)).current;
+  const reduce = useReducedMotion();
   useEffect(() => {
+    if (reduce) {
+      anim.setValue(1);
+      return;
+    }
     Animated.spring(anim, {toValue: 1, useNativeDriver: true, bounciness: 8, speed: 20}).start();
     return () => {};
-  }, [anim]);
+  }, [anim, reduce]);
   return (
     <Animated.View style={[styles.toast, {backgroundColor: bg, borderStartColor: toneColor, borderStartWidth: 4, opacity: anim, transform: [{translateY: anim.interpolate({inputRange: [0, 1], outputRange: [16, 0]})}]}]}>
       <Text style={{color: fg, fontWeight: '600', flex: 1}} numberOfLines={2}>
@@ -496,6 +548,69 @@ function ToastCard({item, toneColor, bg, fg}: {item: ToastItem; toneColor: strin
       </Text>
       <Text style={{color: toneColor, fontWeight: '800'}}>{item.tone === 'error' ? '!' : '✓'}</Text>
     </Animated.View>
+  );
+}
+
+// ------------------------------------------------------------- confirm dialog
+
+/** Destructive-action confirmation (project delete, mask apply, …). */
+export function ConfirmDialog({
+  visible,
+  title,
+  message,
+  confirmLabel,
+  cancelLabel,
+  danger,
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  title: string;
+  message?: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  danger?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const c = useTheme();
+  const reduce = useReducedMotion();
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, {toValue: visible ? 1 : 0, duration: reduce ? 60 : 160, useNativeDriver: true}).start();
+  }, [visible, anim, reduce]);
+  if (!visible) {
+    return null;
+  }
+  return (
+    <Modal transparent visible={visible} onRequestClose={onCancel} animationType="none" statusBarTranslucent>
+      <Animated.View style={[styles.confirmScrim, {backgroundColor: c.scrim, opacity: anim}]}>
+        <View
+          style={[styles.confirmCard, {backgroundColor: c.surface, borderColor: c.border}]}
+          accessible={true}
+          accessibilityRole="alert"
+          accessibilityLabel={`${title}. ${message ?? ''}`}>
+          <Text style={[styles.confirmTitle, {color: c.text}]}>{title}</Text>
+          {message ? <Text style={[styles.confirmMsg, {color: c.textDim}]}>{message}</Text> : null}
+          <View style={styles.confirmActions}>
+            <Pressable
+              onPress={onCancel}
+              accessibilityRole="button"
+              accessibilityLabel={cancelLabel}
+              style={[styles.confirmBtn, {borderColor: c.border, backgroundColor: c.surface2}]}>
+              <Text style={[styles.confirmBtnText, {color: c.text}]}>{cancelLabel}</Text>
+            </Pressable>
+            <Pressable
+              onPress={onConfirm}
+              accessibilityRole="button"
+              accessibilityLabel={confirmLabel}
+              style={[styles.confirmBtn, {backgroundColor: danger ? c.danger : c.accent, borderColor: 'transparent'}]}>
+              <Text style={[styles.confirmBtnText, {color: c.onAccent}]}>{confirmLabel}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Animated.View>
+    </Modal>
   );
 }
 
@@ -514,11 +629,12 @@ export function EmptyState({glyph, title, hint}: {glyph: string; title: string; 
 
 export function FadeInView({children, delay = 0, style}: {children: React.ReactNode; delay?: number; style?: StyleProp<ViewStyle>}) {
   const anim = useRef(new Animated.Value(0)).current;
+  const reduce = useReducedMotion();
   useEffect(() => {
-    Animated.timing(anim, {toValue: 1, duration: 280, delay, easing: Easing.out(Easing.ease), useNativeDriver: true}).start();
-  }, [anim, delay]);
+    Animated.timing(anim, {toValue: 1, duration: reduce ? 0 : 280, delay: reduce ? 0 : delay, easing: Easing.out(Easing.ease), useNativeDriver: true}).start();
+  }, [anim, delay, reduce]);
   return (
-    <Animated.View style={[style, {opacity: anim, transform: [{translateY: anim.interpolate({inputRange: [0, 1], outputRange: [10, 0]})}]}]}>
+    <Animated.View style={[style, {opacity: anim, transform: [{translateY: anim.interpolate({inputRange: [0, 1], outputRange: reduce ? [0, 0] : [10, 0]})}]}]}>
       {children}
     </Animated.View>
   );
@@ -612,6 +728,13 @@ const styles = StyleSheet.create({
   toastHost: {position: 'absolute', bottom: 90, start: 16, end: 16, gap: 8, alignItems: 'stretch', zIndex: 999},
   toast: {borderRadius: 12, padding: 12, flexDirection: 'row', gap: 10, alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: {width: 0, height: 4}},
   empty: {alignItems: 'center', padding: 28, gap: 8},
+  confirmScrim: {...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', padding: 28},
+  confirmCard: {borderRadius: 18, borderWidth: 1, padding: 20, gap: 10, width: '100%', maxWidth: 420, elevation: 16, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 18, shadowOffset: {width: 0, height: 8}},
+  confirmTitle: {fontSize: 16.5, fontWeight: '800'},
+  confirmMsg: {fontSize: 13.5, lineHeight: 20},
+  confirmActions: {flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 6},
+  confirmBtn: {borderRadius: 11, borderWidth: 1, paddingVertical: 10, paddingHorizontal: 18, minWidth: 96, alignItems: 'center'},
+  confirmBtnText: {fontWeight: '800', fontSize: 14},
   emptyGlyph: {fontSize: 40},
   emptyTitle: {fontWeight: '700', fontSize: 14.5, textAlign: 'center'},
   emptyHint: {fontSize: 12.5, textAlign: 'center'},

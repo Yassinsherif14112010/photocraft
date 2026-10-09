@@ -13,6 +13,7 @@
 import {BgRemoval, engineJson} from '../../native/PhotoCraftEngine';
 import type {CutoutResult} from '../../native/PhotoCraftEngine';
 import {Editor, getState} from '../DocumentStore';
+import {tmpDir} from '../paths';
 
 export interface MaskRefinement {
   /** Hard threshold on the matte before smoothing (0..1; 0 = off). */
@@ -39,7 +40,6 @@ export interface BgRemovalResult {
   mode: 'quick' | 'hq';
 }
 
-const TMP_DIR = '/data/data/com.photocraft.mobile/files/tmp';
 
 export const BackgroundRemoval = {
   async isReady(): Promise<boolean> {
@@ -56,7 +56,7 @@ export const BackgroundRemoval = {
    */
   async applyAiCutout(imageBase64: string, opts?: {mode?: 'quick' | 'hq'} & MaskRefinement): Promise<BgRemovalResult> {
     const mode = opts?.mode ?? 'hq';
-    const path = `${TMP_DIR}/cutout-${Date.now()}.png`;
+    const path = `${tmpDir()}/cutout-${Date.now()}.png`;
     const cutout = await matte(imageBase64, {...opts, mode, saveAs: path});
     const reply = await Editor.runCommand('file.placeEmbedded', {path, fit: false});
     const placed = reply.layer as number | undefined;

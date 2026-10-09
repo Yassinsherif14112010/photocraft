@@ -15,7 +15,7 @@ import {History} from '../core/HistoryManager';
 import {BrandKitStore} from '../core/engines/BrandKit';
 import type {BrandKit} from '../core/engines/BrandKit';
 import {TextStudio} from '../core/engines/TextStudio';
-import {FileIO} from '../native/PhotoCraftEngine';
+import {FileIO, Picker} from '../native/PhotoCraftEngine';
 import {
   Badge,
   Card,
@@ -134,7 +134,14 @@ export function BrandKitScreen({onNavigate}: {onNavigate: (r: Route) => void}) {
 
   const importKit = async () => {
     try {
-      const path = '/data/data/com.photocraft.mobile/files/brandkit/import.pcbrand';
+      if (!Picker || !FileIO) {
+        throw new Error('native file IO missing — rebuild the app');
+      }
+      const uri = await Picker.pickDocument(['application/json', 'application/octet-stream']);
+      if (!uri) {
+        return; // user cancelled
+      }
+      const path = await FileIO.copyUriToCache(uri, 'import.pcbrand');
       const imported = await BrandKitStore.importKit(path);
       setKit(imported);
       showToast(s.brand.imported);

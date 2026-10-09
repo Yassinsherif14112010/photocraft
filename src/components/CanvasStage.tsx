@@ -97,7 +97,7 @@ export function CanvasStage({showCenterGuides, showThirds, showSafeArea, safeAre
     let alive = true;
     const timer = setTimeout(async () => {
       try {
-        const data = await renderThumb(st.sessionId!, MAX_SIDE);
+        const data = await renderThumb(st.sessionId!, MAX_SIDE, st.canvasVersion);
         if (alive) {
           setThumb(data);
         }
@@ -333,10 +333,11 @@ function ThirdsOverlay({color}: {color: string}) {
   );
 }
 
-// (canvasVersion busts via key deletion).
+// Cache is keyed per canvasVersion — every successful mutation bumps it, so
+// stale renders can never be shown (mirrors the native pngCache eviction).
 const thumbCache = new Map<string, string>();
-async function renderThumb(sessionId: number, maxSide: number): Promise<string> {
-  const key = `${sessionId}:${maxSide}`;
+async function renderThumb(sessionId: number, maxSide: number, gen: number): Promise<string> {
+  const key = `${sessionId}:${maxSide}:${gen}`;
   const cached = thumbCache.get(key);
   if (cached) {
     thumbCache.delete(key);
@@ -346,7 +347,7 @@ async function renderThumb(sessionId: number, maxSide: number): Promise<string> 
   const {Engine} = await import('../native/PhotoCraftEngine');
   const data = await Engine.renderThumbnail(sessionId, maxSide);
   thumbCache.set(key, data);
-  if (thumbCache.size > 3) {
+  if (thumbCache.size > 4) {
     const first = thumbCache.keys().next().value;
     if (first) {
       thumbCache.delete(first);

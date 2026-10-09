@@ -7,6 +7,7 @@ import React, {useEffect, useState} from 'react';
 import {StatusBar, StyleSheet, View} from 'react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {initTheme, useTheme} from './theme';
+import {initPaths} from './core/paths';
 import {HomeScreen} from './screens/HomeScreen';
 import {EditorScreen} from './screens/EditorScreen';
 import {ExportScreen} from './screens/ExportScreen';
@@ -33,7 +34,7 @@ export default function App() {
   const c = useTheme();
 
   useEffect(() => {
-    initTheme().then(() => setReady(true));
+    Promise.all([initTheme(), initPaths()]).then(() => setReady(true));
   }, []);
 
   // Arabic ships as a fully mirrored experience (forced RTL in index.js).

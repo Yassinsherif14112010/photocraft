@@ -35,6 +35,7 @@ import {History} from '../core/HistoryManager';
 import type {LayerSummary} from '../core/types';
 import {BLEND_MODES} from '../core/types';
 import {Badge, Chip, EmptyState, IconButton, Sheet, showToast} from './ui';
+import {tmpDir} from '../core/paths';
 
 const KEY_TAGS = 'pc.layers.colorTags';
 const KEY_EXPANDED = 'pc.layers.expanded';
@@ -714,7 +715,7 @@ const thumbMem = new Map<string, string>();
 const rowYCache = new Map<number, {y: number; h: number}>();
 let thumbQueue: Promise<unknown> = Promise.resolve();
 
-const TMP_DIR = '/data/data/com.photocraft.mobile/files/tmp';
+const TMP_DIR = () => tmpDir();
 
 /**
  * Real per-layer thumbnails: the engine exports the layer's own composite

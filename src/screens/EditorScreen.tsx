@@ -38,6 +38,7 @@ import {ColorPicker} from '../components/ColorPicker';
 import {OcrWorkspace} from './OcrWorkspace';
 import {BgRemoveWorkspace} from './BgRemoveWorkspace';
 import {
+  Badge,
   Chip,
   EmptyState,
   IconButton,
@@ -50,7 +51,7 @@ import {
 } from '../components/ui';
 import type {Route} from '../App';
 
-type Tool = 'move' | 'layers' | 'text' | 'shapes' | 'assets' | 'ai' | 'effects' | 'export';
+type Tool = 'move' | 'layers' | 'text' | 'shapes' | 'assets' | 'masks' | 'effects' | 'export';
 
 export function EditorScreen({onNavigate}: {onNavigate: (r: Route) => void}) {
   const c = useTheme();
@@ -114,27 +115,33 @@ export function EditorScreen({onNavigate}: {onNavigate: (r: Route) => void}) {
     }
   };
 
-  const dock: Array<{id: Tool; glyph: string; label: string}> = [
+  const dock: Array<{id: Tool | 'ai' | 'smart'; glyph: string; label: string}> = [
     {id: 'move', glyph: '✥', label: s.editor.move},
     {id: 'layers', glyph: '▤', label: s.editor.layers},
     {id: 'text', glyph: 'T', label: s.editor.text},
     {id: 'shapes', glyph: '▣', label: s.editor.shapes},
     {id: 'assets', glyph: '❖', label: s.home.assets},
+    {id: 'masks', glyph: '◐', label: s.editor.masks},
     {id: 'ai', glyph: '✦', label: s.editor.ai},
     {id: 'effects', glyph: '✧', label: s.editor.effects},
+    {id: 'smart', glyph: '⤢', label: s.editor.smartResize},
     {id: 'export', glyph: '⤴', label: s.editor.export},
   ];
 
-  const openTool = (id: Tool) => {
+  const openTool = (id: Tool | 'ai' | 'smart') => {
     if (id === 'export') {
       onNavigate('export');
+      return;
+    }
+    if (id === 'smart') {
+      onNavigate('smart');
       return;
     }
     if (id === 'ai') {
       setAiPanel(true);
       return;
     }
-    setTool(id);
+    setTool(id as Tool);
   };
 
   return (
@@ -192,19 +199,31 @@ export function EditorScreen({onNavigate}: {onNavigate: (r: Route) => void}) {
 
       {/* ---------------- tool dock ---------------- */}
       <View style={[styles.dock, {backgroundColor: c.surface, borderColor: c.border, paddingBottom: Math.max(10, insets.bottom)}]}>
-        {dock.map(d => {
-          const on = d.id === 'layers' && wide ? false : tool === d.id || (d.id === 'ai' && aiPanel);
-          return (
-            <Pressable key={d.id} style={styles.dockItem} onPress={() => openTool(d.id)} android_ripple={{color: c.border}}>
-              <View style={[styles.dockIcon, {backgroundColor: on ? c.accent : 'transparent'}]}>
-                <Text style={{color: on ? c.onAccent : c.textDim, fontSize: 18, fontWeight: '800'}}>{d.glyph}</Text>
-              </View>
-              <Text style={{color: on ? c.accent : c.textDim, fontSize: 9.5, fontWeight: '700'}} numberOfLines={1}>
-                {d.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{flexGrow: 1, gap: 2, paddingHorizontal: 2}}>
+          {dock.map(d => {
+            const on = d.id === 'layers' && wide ? false : tool === d.id || (d.id === 'ai' && aiPanel);
+            return (
+              <Pressable
+                key={d.id}
+                style={wide ? styles.dockItem : [styles.dockItem, styles.dockItemFixed]}
+                onPress={() => openTool(d.id)}
+                android_ripple={{color: c.border}}
+                accessibilityRole="button"
+                accessibilityLabel={d.label}
+                accessibilityState={{selected: on}}>
+                <View style={[styles.dockIcon, {backgroundColor: on ? c.accent : 'transparent'}]}>
+                  <Text style={{color: on ? c.onAccent : c.textDim, fontSize: 18, fontWeight: '800'}}>{d.glyph}</Text>
+                </View>
+                <Text style={{color: on ? c.accent : c.textDim, fontSize: 9.5, fontWeight: '700'}} numberOfLines={1}>
+                  {d.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* ---------------- tool sheets ---------------- */}
@@ -223,6 +242,9 @@ export function EditorScreen({onNavigate}: {onNavigate: (r: Route) => void}) {
       </Sheet>
       <Sheet visible={tool === 'assets'} onClose={() => setTool(null)} title={s.assets.title} heightPct={0.72}>
         <AssetsSheet onDone={() => setTool(null)} />
+      </Sheet>
+      <Sheet visible={tool === 'masks'} onClose={() => setTool(null)} title={s.masks.title} heightPct={0.72}>
+        <MasksSheet />
       </Sheet>
       <Sheet visible={tool === 'shapes'} onClose={() => setTool(null)} title={s.editor.shapes} heightPct={0.62}>
         <ShapesSheet />
@@ -324,6 +346,82 @@ function ShapesSheet() {
   );
 }
 
+// -------------------------------------------------------------- masks sheet
+
+/**
+ * Masks — every action here is a real engine command over the actual layer
+ * mask (`layer.layerMask.*`). The resulting mask stays fully editable:
+ * paint on it, disable it to preview, apply to bake, delete to remove.
+ */
+function MasksSheet() {
+  const c = useTheme();
+  const s = t();
+  const st = useEditor();
+  const active = st.layers.find(l => l.id === st.activeLayerId);
+
+  const go = async (command: string, params: object = {}, label: string) => {
+    try {
+      await runCommand(command, params);
+      History.push(label);
+      showToast(label);
+    } catch (e: any) {
+      showToast(String(e?.message ?? e), 'error');
+    }
+  };
+
+  return (
+    <View style={{gap: 12}}>
+      <Text style={{color: c.textDim, fontSize: 12.5}}>{s.masks.subtitle}</Text>
+      {active?.hasMask ? (
+        <Badge text={s.masks.hasMask} tone="success" />
+      ) : (
+        <Text style={{color: c.warn, fontSize: 12, fontWeight: '700'}}>{s.masks.noMask}</Text>
+      )}
+
+      <SectionLabel text={s.masks.title} />
+      <View style={styles.gridWrap}>
+        <MiniBtn label={s.masks.addRevealAll} onPress={() => go('layer.layerMask.revealAll', {}, s.masks.addRevealAll)} c={c} />
+        <MiniBtn label={s.masks.fromTransparency} onPress={() => go('layer.layerMask.fromTransparency', {}, s.masks.fromTransparency)} c={c} />
+        <MiniBtn label={s.masks.revealSelection} onPress={() => go('layer.layerMask.revealSelection', {}, s.masks.revealSelection)} c={c} />
+        <MiniBtn label={s.masks.hideSelection} onPress={() => go('layer.layerMask.hideSelection', {}, s.masks.hideSelection)} c={c} />
+        <MiniBtn label={s.masks.hideAll} onPress={() => go('layer.layerMask.hideAll', {}, s.masks.hideAll)} c={c} />
+      </View>
+
+      <SectionLabel text={s.editor.mask} />
+      <View style={styles.gridWrap}>
+        <MiniBtn
+          label={s.masks.enabled}
+          onPress={() => go('layer.layerMask.enabled', {enabled: true}, s.masks.enabled)}
+          c={c}
+        />
+        <MiniBtn
+          label={`${s.masks.enabled} ✕`}
+          onPress={() => go('layer.layerMask.enabled', {enabled: false}, `${s.masks.enabled} ✕`)}
+          c={c}
+        />
+        <MiniBtn
+          label={s.masks.linked}
+          onPress={() => go('layer.layerMask.linked', {linked: true}, s.masks.linked)}
+          c={c}
+        />
+        <MiniBtn
+          label={`${s.masks.linked} ✕`}
+          onPress={() => go('layer.layerMask.linked', {linked: false}, `${s.masks.linked} ✕`)}
+          c={c}
+        />
+      </View>
+
+      <SectionLabel text={s.editor.transform} />
+      <View style={styles.gridWrap}>
+        <MiniBtn label={s.masks.clipping} onPress={() => go('layer.createClippingMask', {}, s.masks.clipping)} c={c} />
+        <MiniBtn label={s.masks.apply} onPress={() => go('layer.layerMask.apply', {}, s.masks.apply)} c={c} />
+        <MiniBtn label={s.masks.delete} onPress={() => go('layer.layerMask.delete', {}, s.masks.delete)} c={c} danger />
+      </View>
+
+      <Text style={{color: c.textFaint, fontSize: 11}}>{s.masks.hint}</Text>
+    </View>
+  );}
+
 // --------------------------------------------------------------- move sheet
 
 function MoveSheet() {
@@ -388,10 +486,14 @@ function MoveSheet() {
   );
 }
 
-function MiniBtn({label, onPress, c}: {label: string; onPress: () => void; c: Palette}) {
+function MiniBtn({label, onPress, c, danger}: {label: string; onPress: () => void; c: Palette; danger?: boolean}) {
   return (
-    <Pressable onPress={onPress} style={[styles.miniBtn, {backgroundColor: c.surface2, borderColor: c.border}]}>
-      <Text style={{color: c.text, fontSize: 12, fontWeight: '700'}}>{label}</Text>
+    <Pressable
+      onPress={onPress}
+      style={[styles.miniBtn, {backgroundColor: c.surface2, borderColor: danger ? c.dangerSoft : c.border}]}
+      accessibilityRole="button"
+      accessibilityLabel={label}>
+      <Text style={{color: danger ? c.danger : c.text, fontSize: 12, fontWeight: '700'}}>{label}</Text>
     </Pressable>
   );
 }
@@ -534,7 +636,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     gap: 2,
   },
-  dockItem: {flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4, borderRadius: 10},
+  dockItem: {flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4, borderRadius: 10, minWidth: 56},
+  dockItemFixed: {flex: 0, width: 58},
   dockIcon: {width: 38, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center'},
   aiCard: {borderRadius: 14, borderWidth: 1, padding: 16, gap: 4},
   shapeGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 10},
