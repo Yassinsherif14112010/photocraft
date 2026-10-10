@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PhotoCraft design system — typography and component styles. -->
+<resources>
+
+    <!-- Text appearances =================================================== -->
+    <style name="TextAppearance.PhotoCraft.Display" parent="TextAppearance.MaterialComponents.Headline4">
+        <item name="android:textSize">34sp</item>
+        <item name="android:textColor">@color/pc_text_primary</item>
+        <item name="android:letterSpacing">-0.01</item>
+    </style>
+
+    <style name="TextAppearance.PhotoCraft.Headline" parent="TextAppearance.MaterialComponents.Headline6">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textColor">@color/pc_text_primary</item>
+    </style>
+
+    <style name="TextAppearance.PhotoCraft.Title" parent="TextAppearance.MaterialComponents.Subtitle1">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/pc_text_primary</item>
+    </style>
+
+    <style name="TextAppearance.PhotoCraft.Body" parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/pc_text_secondary</item>
+    </style>
+
+    <style name="TextAppearance.PhotoCraft.Caption" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/pc_text_secondary</item>
+    </style>
+
+    <style name="TextAppearance.PhotoCraft.Label" parent="TextAppearance.MaterialComponents.Button">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">@color/pc_text_primary</item>
+    </style>
+
+    <style name="TextAppearance.PhotoCraft.ToolbarTitle" parent="TextAppearance.MaterialComponents.Headline6">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textColor">@color/pc_text_primary</item>
+    </style>
+
+    <!-- Cards ============================================================== -->
+    <style name="Widget.PhotoCraft.Card" parent="Widget.MaterialComponents.CardView">
+        <item name="cardCornerRadius">@dimen/card_radius</item>
+        <item name="cardElevation">@dimen/elevation_card</item>
+        <item name="cardBackgroundColor">@color/pc_surface</item>
+    </style>
+
+    <!-- Buttons ============================================================ -->
+    <style name="Widget.PhotoCraft.Button" parent="Widget.MaterialComponents.Button">
+        <item name="android:textAllCaps">false</item>
+        <item name="cornerRadius">@dimen/control_radius</item>
+        <item name="android:minHeight">@dimen/touch_target</item>
+    </style>
+
+    <style name="Widget.PhotoCraft.Button.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:textAllCaps">false</item>
+        <item name="cornerRadius">@dimen/control_radius</item>
+        <item name="android:minHeight">@dimen/touch_target</item>
+    </style>
+
+    <!-- Editor tool buttons ================================================= -->
+    <style name="Widget.PhotoCraft.ToolButton" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:minWidth">@dimen/tool_button_size</item>
+        <item name="android:minHeight">@dimen/tool_button_size</item>
+        <item name="android:padding">0dp</item>
+        <item name="iconTint">@color/pc_tool_inactive</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+    </style>
+
+    <!-- Panel section titles ================================================ -->
+    <style name="Widget.PhotoCraft.PanelTitle" parent="TextAppearance.MaterialComponents.Overline">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/pc_text_secondary</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+</resources>

@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Editor. One layout for every device: the right-hand panel container is shown only when the
+  computed window width class is medium or expanded (tablets, unfolded foldables, landscape
+  phones and split-screen), which is decided in code from the real window metrics — not from a
+  hard-coded model name or a fixed dp bucket baked into the layout.
+-->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/editorRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/pc_canvas_backdrop"
+    tools:context=".ui.editor.EditorActivity">
+
+    <include
+        android:id="@+id/topBar"
+        layout="@layout/view_editor_topbar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- The canvas: the real composite from the engine, pannable and zoomable. -->
+    <FrameLayout
+        android:id="@+id/canvasHost"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@color/pc_canvas_backdrop"
+        app:layout_constraintBottom_toTopOf="@+id/toolbar"
+        app:layout_constraintEnd_toStartOf="@+id/sidePanel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/topBar">
+
+        <ai.storyteller.photocraft.ui.editor.CanvasView
+            android:id="@+id/canvas"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/a11y_canvas" />
+
+        <ProgressBar
+            android:id="@+id/canvasProgress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            tools:visibility="visible" />
+    </FrameLayout>
+
+    <!-- Persistent side panel: visible from the medium width class up. -->
+    <FrameLayout
+        android:id="@+id/sidePanel"
+        android:layout_width="@dimen/side_panel_width"
+        android:layout_height="0dp"
+        android:background="@color/pc_surface_panel"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/toolbar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/topBar"
+        tools:visibility="visible">
+
+        <FrameLayout
+            android:id="@+id/sidePanelContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </FrameLayout>
+
+    <!-- Panel host for phones: the panels are the same views, shown as an expandable bottom sheet. -->
+    <FrameLayout
+        android:id="@+id/bottomSheetPanel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@color/pc_surface_panel"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/toolbar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:visibility="visible" />
+
+    <HorizontalScrollView
+        android:id="@+id/toolbar"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/bottom_toolbar_height"
+        android:background="@color/pc_bottombar"
+        android:fillViewport="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <LinearLayout
+            android:id="@+id/toolbarButtons"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="@dimen/space_2"
+            android:paddingEnd="@dimen/space_2">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/toolLayers"
+                style="@style/Widget.PhotoCraft.ToolButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tool_layers"
+                app:icon="@drawable/ic_layers" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/toolText"
+                style="@style/Widget.PhotoCraft.ToolButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tool_text"
+                app:icon="@drawable/ic_text" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/toolAdjust"
+                style="@style/Widget.PhotoCraft.ToolButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tool_adjust"
+                app:icon="@drawable/ic_adjust" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/toolTransform"
+                style="@style/Widget.PhotoCraft.ToolButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tool_transform"
+                app:icon="@drawable/ic_transform" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/toolAi"
+                style="@style/Widget.PhotoCraft.ToolButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tool_ai"
+                app:icon="@drawable/ic_magic" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/toolAssets"
+                style="@style/Widget.PhotoCraft.ToolButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tool_assets"
+                app:icon="@drawable/ic_assets" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/toolCrop"
+                style="@style/Widget.PhotoCraft.ToolButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tool_crop"
+                app:icon="@drawable/ic_crop" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

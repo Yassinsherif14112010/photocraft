@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      Base theme. DayNight: the light/dark switch is AppCompatDelegate, driven by Settings › Theme
+      and by the system. RTL is enabled in the manifest (android:supportsRtl) and every layout uses
+      start/end, so Arabic mirrors the whole app.
+    -->
+    <style name="Theme.PhotoCraft" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorSecondary">@color/pc_secondary</item>
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="colorOnSurface">@color/colorOnSurface</item>
+        <item name="colorError">@color/colorError</item>
+        <item name="colorOnPrimary">@color/colorOnPrimary</item>
+        <item name="colorControlNormal">@color/colorControlNormal</item>
+        <item name="colorControlActivated">@color/colorControlActivated</item>
+        <item name="android:colorBackground">@color/colorBackground</item>
+        <item name="android:statusBarColor">@color/statusBarColor</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowBackground">@color/colorBackground</item>
+        <item name="android:navigationBarColor">@color/pc_surface</item>
+        <item name="android:textColorPrimary">@color/pc_text_primary</item>
+        <item name="android:textColorSecondary">@color/pc_text_secondary</item>
+        <item name="toolbarStyle">@style/Widget.PhotoCraft.Toolbar</item>
+        <item name="materialButtonStyle">@style/Widget.PhotoCraft.Button</item>
+    </style>
+
+    <style name="Widget.PhotoCraft.Toolbar" parent="Widget.MaterialComponents.Toolbar">
+        <item name="android:background">@color/pc_topbar</item>
+        <item name="titleTextAppearance">@style/TextAppearance.PhotoCraft.ToolbarTitle</item>
+    </style>
+
+    <!-- Full-bleed editor: the canvas colours the whole window. -->
+    <style name="Theme.PhotoCraft.Editor" parent="Theme.PhotoCraft">
+        <item name="android:windowBackground">@color/pc_canvas_backdrop</item>
+        <item name="android:statusBarColor">@color/pc_canvas_backdrop</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">@color/pc_bottombar</item>
+    </style>
+
+    <!-- Bottom-sheet panels: rounded top corners, panel background, no dim by default. -->
+    <style name="Theme.PhotoCraft.BottomSheet" parent="Theme.MaterialComponents.BottomSheetDialog">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="bottomSheetStyle">@style/Widget.PhotoCraft.BottomSheet</item>
+    </style>
+
+    <style name="Widget.PhotoCraft.BottomSheet" parent="Widget.MaterialComponents.BottomSheet.Modal">
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.PhotoCraft.Sheet</item>
+        <item name="backgroundTint">@color/pc_surface_panel</item>
+    </style>
+
+    <style name="ShapeAppearance.PhotoCraft.Sheet" parent="ShapeAppearance.MaterialComponents.LargeComponent">
+        <item name="cornerSizeTopLeft">@dimen/sheet_radius</item>
+        <item name="cornerSizeTopRight">@dimen/sheet_radius</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
+    </style>
+</resources>

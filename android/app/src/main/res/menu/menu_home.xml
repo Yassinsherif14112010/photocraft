@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_import"
+        android:icon="@drawable/ic_folder"
+        android:title="@string/home_import"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_templates"
+        android:icon="@drawable/ic_assets"
+        android:title="@string/home_templates"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_assets"
+        android:title="@string/home_assets"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_brand_kit"
+        android:title="@string/home_brand_kit"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_settings"
+        android:title="@string/title_settings"
+        app:showAsAction="never" />
+</menu>

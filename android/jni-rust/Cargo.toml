@@ -1,0 +1,77 @@
+# The PhotoCraft Android JNI bridge.
+#
+# This crate is deliberately a *detached* cargo workspace: it depends on the real engine crates
+# by path, but it is never built as part of the desktop workspace (it produces a `cdylib` for
+# Android only, and `unsafe`-adjacent JNI glue must not leak the workspace's `unsafe_code =
+# "forbid"`-adjacent guarantees into `crates/*`). Build it with `cargo ndk` (see
+# `scripts/build-android.sh`).
+[workspace]
+
+[package]
+name = "photocraft-jni"
+version = "0.5.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+description = "JNI bridge between the real PhotoCraft engine and the Android application"
+rust-version = "1.95"
+
+[lib]
+# `System.loadLibrary("photocraft")` on the Kotlin side.
+name = "photocraft"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# JNI bindings (MIT/Apache-2.0). 0.21 is the last release with the `JNIEnv<'a>` API used here.
+jni = "0.21"
+log = "0.4"
+# Routes `log` to logcat on Android.
+android_logger = "0.14"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+once_cell = "1"
+
+[dependencies.photocraft-engine]
+path = "../../crates/engine"
+
+[dependencies.photocraft-doc]
+path = "../../crates/doc"
+
+[dependencies.photocraft-ops]
+path = "../../crates/ops"
+
+[dependencies.photocraft-io]
+path = "../../crates/io"
+
+[dependencies.photocraft-format]
+path = "../../crates/format"
+
+[dependencies.photocraft-compose]
+path = "../../crates/compose"
+
+[dependencies.photocraft-raster]
+path = "../../crates/raster"
+
+[dependencies.photocraft-geom]
+path = "../../crates/geom"
+
+[dependencies.photocraft-color]
+path = "../../crates/color"
+
+[dependencies.photocraft-algo]
+path = "../../crates/algo"
+
+[dependencies.photocraft-codecs]
+path = "../../crates/codecs"
+
+[dev-dependencies]
+# Host-side unit tests of `core` (no JVM needed) use the engine exactly as the app does.
+serde_json = "1"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "unwind"
+strip = true

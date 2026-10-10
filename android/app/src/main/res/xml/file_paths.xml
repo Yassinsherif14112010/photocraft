@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paths shared with other apps (export › share, "open with" from a file manager). -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Exported images live in the cache: readable by the receiving app, never by everyone. -->
+    <cache-path
+        name="export"
+        path="export/" />
+    <files-path
+        name="projects"
+        path="projects/" />
+    <external-files-path
+        name="pictures"
+        path="Pictures/" />
+    <external-path
+        name="external"
+        path="." />
+</paths>

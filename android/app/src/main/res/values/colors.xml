@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PhotoCraft design system — colour tokens (light theme).
+
+  Everything in the UI refers to these names, never to a literal colour, so the dark theme, the
+  RTL layouts and future themes stay consistent. Tokens are grouped by role:
+    pc_surface_*      backgrounds of screens, cards, panels and sheets
+    pc_text_*         foreground text (primary, secondary, disabled, on-colour)
+    pc_accent_*       the editor's highlight colour (selection, active tool, progress)
+    pc_state_*        status colours (saved, unsaved, error, warning, success)
+    pc_canvas_*       the canvas surround and the transparency checkerboard
+-->
+<resources>
+
+    <!-- Brand -->
+    <color name="pc_primary">#1B5CF4</color>
+    <color name="pc_primary_dark">#0B3FA8</color>
+    <color name="pc_primary_container">#DCE3FF</color>
+    <color name="pc_on_primary">#FFFFFF</color>
+    <color name="pc_secondary">#0E7C86</color>
+    <color name="pc_secondary_container">#CDEEF2</color>
+    <color name="pc_on_secondary">#FFFFFF</color>
+    <color name="pc_tertiary">#7A4DE8</color>
+
+    <!-- Surfaces -->
+    <color name="pc_surface">#FFFFFF</color>
+    <color name="pc_surface_variant">#F1F2F7</color>
+    <color name="pc_surface_raised">#FFFFFF</color>
+    <color name="pc_surface_panel">#F7F8FC</color>
+    <color name="pc_background">#F7F8FC</color>
+    <color name="pc_scrim">#99000000</color>
+    <color name="pc_outline">#D3D5DF</color>
+    <color name="pc_divider">#E7E8EF</color>
+
+    <!-- Text -->
+    <color name="pc_text_primary">#1A1B21</color>
+    <color name="pc_text_secondary">#5B5E6B</color>
+    <color name="pc_text_disabled">#A0A3AE</color>
+    <color name="pc_text_on_primary">#FFFFFF</color>
+    <color name="pc_text_on_surface">#1A1B21</color>
+    <color name="pc_text_link">#1B5CF4</color>
+
+    <!-- State -->
+    <color name="pc_state_saved">#0E7C5A</color>
+    <color name="pc_state_unsaved">#B26B00</color>
+    <color name="pc_state_error">#B3261E</color>
+    <color name="pc_state_error_container">#FBE4E2</color>
+    <color name="pc_state_warning">#8A5A00</color>
+    <color name="pc_state_success">#0E7C5A</color>
+    <color name="pc_state_selected">#E3EAFF</color>
+
+    <!-- Canvas -->
+    <color name="pc_canvas_backdrop">#2A2C33</color>
+    <color name="pc_canvas_checker_light">#E9EAEE</color>
+    <color name="pc_canvas_checker_dark">#CFCFD6</color>
+
+    <!-- Editor chrome -->
+    <color name="pc_topbar">#FFFFFF</color>
+    <color name="pc_bottombar">#FFFFFF</color>
+    <color name="pc_tool_active">#1B5CF4</color>
+    <color name="pc_tool_inactive">#5B5E6B</color>
+    <color name="pc_slider_active">#1B5CF4</color>
+    <color name="pc_slider_inactive">#D3D5DF</color>
+
+    <!-- Compatibility aliases used by the MaterialComponents theme. -->
+    <color name="colorPrimary">@color/pc_primary</color>
+    <color name="colorPrimaryDark">@color/pc_primary_dark</color>
+    <color name="colorAccent">@color/pc_secondary</color>
+    <color name="colorSurface">@color/pc_surface</color>
+    <color name="colorOnSurface">@color/pc_text_primary</color>
+    <color name="colorError">@color/pc_state_error</color>
+    <color name="colorOnPrimary">@color/pc_on_primary</color>
+    <color name="colorOnError">#FFFFFF</color>
+    <color name="colorControlNormal">@color/pc_text_secondary</color>
+    <color name="colorControlActivated">@color/pc_primary</color>
+    <color name="colorControlHighlight">#1F000000</color>
+    <color name="colorBackground">@color/pc_background</color>
+    <color name="statusBarColor">@color/pc_surface</color>
+</resources>

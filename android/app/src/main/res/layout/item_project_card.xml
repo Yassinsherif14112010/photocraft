@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One recent project: thumbnail, name, size and last edit. The overflow menu renames,
+     duplicates, exports or deletes it. -->
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    style="@style/Widget.PhotoCraft.Card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="@dimen/space_1"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardBackgroundColor="@color/pc_surface">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/thumbnail_height"
+            android:background="@color/pc_canvas_backdrop">
+
+            <ImageView
+                android:id="@+id/thumb"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/a11y_thumbnail"
+                android:scaleType="centerCrop"
+                tools:src="@drawable/ic_image" />
+
+            <View
+                android:id="@+id/thumbScrim"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/pc_scrim"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="@dimen/space_3"
+            android:paddingEnd="@dimen/space_1"
+            android:paddingTop="@dimen/space_2"
+            android:paddingBottom="@dimen/space_2">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textAppearance="@style/TextAppearance.PhotoCraft.Title"
+                    tools:text="Sunset poster" />
+
+                <TextView
+                    android:id="@+id/meta"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:textAppearance="@style/TextAppearance.PhotoCraft.Caption"
+                    tools:text="1080 × 1350 · Edited 2 h ago" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/overflow"
+                android:layout_width="@dimen/touch_target"
+                android:layout_height="@dimen/touch_target"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/home_menu_rename"
+                android:src="@drawable/ic_adjust"
+                app:tint="@color/pc_text_secondary" />
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PhotoCraft design system — spacing, sizing and component tokens.
+
+  Phones, tablets and foldables share these names; values-sw600dp and values-sw840dp override the
+  few that should grow (gutters, panel widths, grid spacing). No screen hard-codes a size.
+-->
+<resources>
+    <!-- Spacing scale (4 dp base) -->
+    <dimen name="space_half">2dp</dimen>
+    <dimen name="space_1">4dp</dimen>
+    <dimen name="space_2">8dp</dimen>
+    <dimen name="space_3">12dp</dimen>
+    <dimen name="space_4">16dp</dimen>
+    <dimen name="space_5">20dp</dimen>
+    <dimen name="space_6">24dp</dimen>
+    <dimen name="space_8">32dp</dimen>
+    <dimen name="space_10">40dp</dimen>
+    <dimen name="space_12">48dp</dimen>
+
+    <!-- Screen gutters -->
+    <dimen name="screen_gutter">16dp</dimen>
+    <dimen name="card_gap">12dp</dimen>
+
+    <!-- Components -->
+    <dimen name="touch_target">48dp</dimen>
+    <dimen name="toolbar_height">56dp</dimen>
+    <dimen name="bottom_toolbar_height">64dp</dimen>
+    <dimen name="panel_height">300dp</dimen>
+    <dimen name="panel_peek">64dp</dimen>
+    <dimen name="side_panel_width">320dp</dimen>
+    <dimen name="card_radius">16dp</dimen>
+    <dimen name="sheet_radius">24dp</dimen>
+    <dimen name="control_radius">12dp</dimen>
+    <dimen name="thumbnail_height">132dp</dimen>
+    <dimen name="layer_row_height">56dp</dimen>
+    <dimen name="tool_button_size">56dp</dimen>
+    <dimen name="icon_size">24dp</dimen>
+    <dimen name="elevation_card">2dp</dimen>
+    <dimen name="elevation_sheet">8dp</dimen>
+
+    <!-- Typography (text sizes live in styles; these are the content widths that read well) -->
+    <dimen name="text_column_max">640dp</dimen>
+</resources>

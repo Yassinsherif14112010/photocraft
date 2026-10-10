@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Grid spans per window size class. The code reads these and recomputes the span count from the
+     real window width, so a half-screen split view and a 12" tablet both look right. -->
+<resources>
+    <integer name="grid_span_compact">2</integer>
+    <integer name="grid_span_medium">3</integer>
+    <integer name="grid_span_expanded">4</integer>
+    <integer name="grid_span_asset_compact">3</integer>
+    <integer name="grid_span_asset_medium">4</integer>
+    <integer name="grid_span_asset_expanded">6</integer>
+    <integer name="autosave_debounce_ms">20000</integer>
+    <integer name="render_max_side_phone">2048</integer>
+    <integer name="render_max_side_tablet">3072</integer>
+</resources>

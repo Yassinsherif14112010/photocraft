@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Export sheet. Exporting never mutates the open document: a scaled export resizes a throwaway
+     copy inside the engine, and the sheet always reports the real output size. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/pc_surface_panel"
+    android:orientation="vertical"
+    android:paddingStart="@dimen/screen_gutter"
+    android:paddingEnd="@dimen/screen_gutter"
+    android:paddingTop="@dimen/space_3"
+    android:paddingBottom="@dimen/space_4">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/export_title"
+        android:textAppearance="@style/Widget.PhotoCraft.PanelTitle" />
+
+    <RadioGroup
+        android:id="@+id/formatGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_2">
+
+        <RadioButton
+            android:id="@+id/formatPng"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:minHeight="@dimen/touch_target"
+            android:text="@string/export_png" />
+
+        <RadioButton
+            android:id="@+id/formatJpeg"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="@dimen/touch_target"
+            android:text="@string/export_jpeg" />
+
+        <RadioButton
+            android:id="@+id/formatWebp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="@dimen/touch_target"
+            android:text="@string/export_webp" />
+
+        <RadioButton
+            android:id="@+id/formatPsd"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="@dimen/touch_target"
+            android:text="@string/export_psd" />
+
+        <RadioButton
+            android:id="@+id/formatPcraft"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="@dimen/touch_target"
+            android:text="@string/export_pcraft" />
+    </RadioGroup>
+
+    <TextView
+        android:id="@+id/scaleLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_2"
+        android:text="@string/export_scale"
+        android:textAppearance="@style/TextAppearance.PhotoCraft.Caption" />
+
+    <com.google.android.material.slider.Slider
+        android:id="@+id/scaleSlider"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:stepSize="5.0"
+        android:value="100.0"
+        android:valueFrom="10.0"
+        android:valueTo="100.0" />
+
+    <TextView
+        android:id="@+id/outputSize"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="@style/TextAppearance.PhotoCraft.Caption"
+        tools:text="1080 × 1350" />
+
+    <TextView
+        android:id="@+id/qualityLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_2"
+        android:text="@string/export_quality"
+        android:textAppearance="@style/TextAppearance.PhotoCraft.Caption" />
+
+    <com.google.android.material.slider.Slider
+        android:id="@+id/qualitySlider"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:stepSize="1.0"
+        android:value="90.0"
+        android:valueFrom="1.0"
+        android:valueTo="100.0" />
+
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/transparencySwitch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_1"
+        android:checked="true"
+        android:text="@string/export_transparency" />
+
+    <TextView
+        android:id="@+id/transparencyNote"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/export_transparency_note"
+        android:textAppearance="@style/TextAppearance.PhotoCraft.Caption"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/flatNote"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_2"
+        android:text="@string/export_note_not_layered"
+        android:textAppearance="@style/TextAppearance.PhotoCraft.Caption" />
+
+    <TextView
+        android:id="@+id/status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_2"
+        android:textAppearance="@style/TextAppearance.PhotoCraft.Caption"
+        tools:text="Exporting…" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_3"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/exportButton"
+            style="@style/Widget.PhotoCraft.Button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/space_1"
+            android:layout_weight="1"
+            android:text="@string/export_action"
+            app:icon="@drawable/ic_export" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/shareButton"
+            style="@style/Widget.PhotoCraft.Button.Outlined"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/export_share" />
+    </LinearLayout>
+</LinearLayout>

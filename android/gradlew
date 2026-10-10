@@ -1,0 +1,85 @@
+#!/bin/sh
+# ----------------------------------------------------------------------------
+# PhotoCraft Gradle bootstrap (POSIX: Linux, macOS, WSL, Git Bash).
+#
+# The stock Android Studio wrapper needs a binary `gradle-wrapper.jar`, which this repository
+# does not commit (binaries are kept out of the source tree). This script does the same job with
+# the tools a shell already has: it reads `gradle/wrapper/gradle-wrapper.properties`, downloads the
+# Gradle distribution once into ~/.gradle/wrapper/dists, and runs that distribution's own
+# `bin/gradle`. Windows users should run `gradlew.bat` (or `scripts/build-android.ps1`).
+# ----------------------------------------------------------------------------
+set -e
+
+APP_HOME=$(cd "$(dirname "$0")" >/dev/null 2>&1 && pwd)
+WRAPPER_PROPS="$APP_HOME/gradle/wrapper/gradle-wrapper.properties"
+
+die() { printf 'gradlew: %s\n' "$1" >&2; exit 1; }
+
+[ -r "$WRAPPER_PROPS" ] || die "missing $WRAPPER_PROPS"
+
+# --- Java -------------------------------------------------------------------
+if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+    JAVA_CMD="$JAVA_HOME/bin/java"
+elif command -v java >/dev/null 2>&1; then
+    JAVA_CMD=java
+else
+    die "no Java found: set JAVA_HOME to a JDK 17 installation (see scripts/check-prereqs.sh)"
+fi
+
+# --- distribution coordinates ----------------------------------------------
+DISTRIBUTION_URL=$(sed -n 's/^[[:space:]]*distributionUrl=//p' "$WRAPPER_PROPS" | tr -d '\r')
+[ -n "$DISTRIBUTION_URL" ] || die "distributionUrl is missing from $WRAPPER_PROPS"
+DISTRIBUTION_URL=$(printf '%s' "$DISTRIBUTION_URL" | sed 's/\\:/:/g')
+
+ZIP_NAME=$(basename "$DISTRIBUTION_URL")
+DIST_NAME=$(printf '%s' "$ZIP_NAME" | sed 's/-bin\.zip$//; s/-all\.zip$//; s/\.zip$//')
+[ -n "$DIST_NAME" ] || die "could not work out the distribution name from $DISTRIBUTION_URL"
+
+GRADLE_USER_HOME=${GRADLE_USER_HOME:-"$HOME/.gradle"}
+DIST_PARENT="$GRADLE_USER_HOME/wrapper/dists/$DIST_NAME"
+DIST_DIR="$DIST_PARENT/gradle"
+MARKER="$DIST_PARENT/$ZIP_NAME.ok"
+
+if [ ! -x "$DIST_DIR/bin/gradle" ] || [ ! -f "$MARKER" ]; then
+    mkdir -p "$DIST_PARENT" || die "cannot create $DIST_PARENT"
+    TMP_ZIP="$DIST_PARENT/$ZIP_NAME.part"
+    printf 'Downloading %s\n' "$DISTRIBUTION_URL"
+    if command -v curl >/dev/null 2>&1; then
+        curl -fSL --retry 3 --retry-delay 2 -o "$TMP_ZIP" "$DISTRIBUTION_URL" || die "download failed: $DISTRIBUTION_URL"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -O "$TMP_ZIP" "$DISTRIBUTION_URL" || die "download failed: $DISTRIBUTION_URL"
+    else
+        die "neither curl nor wget is available to download Gradle"
+    fi
+    EXPECTED_SHA=$(sed -n 's/^[[:space:]]*distributionSha256Sum=//p' "$WRAPPER_PROPS" | tr -d '\r')
+    if [ -n "$EXPECTED_SHA" ]; then
+        if command -v sha256sum >/dev/null 2>&1; then
+            ACTUAL_SHA=$(sha256sum "$TMP_ZIP" | awk '{print $1}')
+        else
+            ACTUAL_SHA=$(shasum -a 256 "$TMP_ZIP" | awk '{print $1}')
+        fi
+        [ "$ACTUAL_SHA" = "$EXPECTED_SHA" ] || die "checksum mismatch for $ZIP_NAME: expected $EXPECTED_SHA, got $ACTUAL_SHA"
+    fi
+    command -v unzip >/dev/null 2>&1 || die "unzip is required to unpack the Gradle distribution"
+    rm -rf "$DIST_DIR"
+    unzip -q "$TMP_ZIP" -d "$DIST_PARENT" || die "could not unpack $TMP_ZIP"
+    # The zip contains a single top-level gradle-<version> directory.
+    if [ ! -x "$DIST_DIR/bin/gradle" ]; then
+        UNPACKED=$(find "$DIST_PARENT" -maxdepth 1 -mindepth 1 -type d -name 'gradle-*' | head -n 1)
+        [ -n "$UNPACKED" ] && [ -x "$UNPACKED/bin/gradle" ] || die "unpacked distribution has no bin/gradle"
+        rm -rf "$DIST_DIR"
+        mv "$UNPACKED" "$DIST_DIR" || die "could not move the unpacked distribution into place"
+    fi
+    rm -f "$TMP_ZIP"
+    chmod +x "$DIST_DIR/bin/gradle"
+    : > "$MARKER"
+    printf 'Gradle %s ready\n' "$DIST_NAME"
+fi
+
+# If a real gradle-wrapper.jar is present (Android Studio generates one), use it: it is the
+# canonical launcher. Otherwise run the downloaded distribution's own launcher.
+if [ -f "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" ]; then
+    exec "$JAVA_CMD" -classpath "$APP_HOME/gradle/wrapper" org.gradle.wrapper.GradleWrapperMain "$@"
+fi
+
+exec "$DIST_DIR/bin/gradle" --project-dir "$APP_HOME" "$@"

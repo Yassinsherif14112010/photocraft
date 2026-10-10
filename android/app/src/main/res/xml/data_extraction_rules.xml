@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cloud backup/transfer rules: projects and models stay on the device. Models are large and
+     re-downloadable; projects can contain unpublished work, so they are device-local. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude
+            domain="file"
+            path="projects" />
+        <exclude
+            domain="file"
+            path="models" />
+        <exclude
+            domain="file"
+            path="assets" />
+        <include
+            domain="sharedpref"
+            path="." />
+    </cloud-backup>
+    <device-transfer>
+        <include
+            domain="file"
+            path="projects" />
+        <exclude
+            domain="file"
+            path="models" />
+    </device-transfer>
+</data-extraction-rules>

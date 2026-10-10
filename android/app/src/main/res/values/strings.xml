@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PhotoCraft strings. Every user-visible text lives here; values-ar/strings.xml mirrors it in
+  Arabic and the layout direction follows automatically (android:supportsRtl="true", start/end
+  everywhere). Keys are stable: tests check that both files define the same set.
+-->
+<resources>
+    <string name="app_name">PhotoCraft</string>
+    <string name="app_short_name">Craft</string>
+
+    <!-- Home -->
+    <string name="title_home">PhotoCraft</string>
+    <string name="title_editor">Editor</string>
+    <string name="title_templates">Templates</string>
+    <string name="title_assets">Assets</string>
+    <string name="title_brand_kit">Brand kit</string>
+    <string name="title_settings">Settings</string>
+
+    <string name="home_new_project">New project</string>
+    <string name="home_import">Import</string>
+    <string name="home_templates">Templates</string>
+    <string name="home_brand_kit">Brand kit</string>
+    <string name="home_assets">Assets</string>
+    <string name="home_search_hint">Search projects</string>
+    <string name="home_continue_editing">Continue editing</string>
+    <string name="home_recent">Recent</string>
+    <string name="home_empty_title">No projects yet</string>
+    <string name="home_empty_body">Create a blank canvas, start from a social-media template, or import a photo to begin.</string>
+    <string name="home_empty_search">No project matches “%1$s”</string>
+    <string name="home_project_size">%1$d × %2$d</string>
+    <string name="home_project_edited">Edited %1$s</string>
+    <string name="home_menu_rename">Rename</string>
+    <string name="home_menu_duplicate">Duplicate</string>
+    <string name="home_menu_delete">Delete</string>
+    <string name="home_menu_export">Export…</string>
+    <string name="home_delete_confirm">Delete “%1$s”? The project file is removed from this device.</string>
+    <string name="home_delete_done">Project deleted</string>
+
+    <!-- New project / templates -->
+    <string name="newproject_title">New project</string>
+    <string name="newproject_blank">Blank canvas</string>
+    <string name="newproject_custom">Custom size</string>
+    <string name="newproject_width">Width</string>
+    <string name="newproject_height">Height</string>
+    <string name="newproject_resolution">Resolution (dpi)</string>
+    <string name="newproject_background">Background</string>
+    <string name="newproject_bg_white">White</string>
+    <string name="newproject_bg_black">Black</string>
+    <string name="newproject_bg_transparent">Transparent</string>
+    <string name="newproject_create">Create</string>
+    <string name="newproject_group_social">Social</string>
+    <string name="newproject_group_print">Print</string>
+    <string name="newproject_group_blank">Blank</string>
+    <string name="newproject_invalid_size">Enter a size between 1 and 30000 pixels</string>
+
+    <!-- Presets -->
+    <string name="preset_ig_post">Instagram post</string>
+    <string name="preset_ig_portrait">Instagram portrait</string>
+    <string name="preset_ig_story">Instagram story</string>
+    <string name="preset_ig_reel">Instagram reel</string>
+    <string name="preset_fb_post">Facebook post</string>
+    <string name="preset_fb_story">Facebook story</string>
+    <string name="preset_fb_cover">Facebook cover</string>
+    <string name="preset_yt_thumbnail">YouTube thumbnail</string>
+    <string name="preset_yt_channel">YouTube channel art</string>
+    <string name="preset_yt_short">YouTube short</string>
+    <string name="preset_tiktok">TikTok</string>
+    <string name="preset_x_post">X post</string>
+    <string name="preset_linkedin">LinkedIn post</string>
+    <string name="preset_pinterest">Pinterest pin</string>
+    <string name="preset_a4_300">A4 print 300 dpi</string>
+    <string name="preset_a5_300">A5 print 300 dpi</string>
+    <string name="preset_letter_300">US Letter 300 dpi</string>
+    <string name="preset_photo_4x6">Photo 4×6 in</string>
+    <string name="preset_blank_hd">HD 1920 × 1080</string>
+    <string name="preset_blank_square">Square 2048</string>
+    <string name="preset_blank_transparent">Transparent square</string>
+
+    <!-- Editor: top bar -->
+    <string name="editor_undo">Undo</string>
+    <string name="editor_redo">Redo</string>
+    <string name="editor_export">Export</string>
+    <string name="editor_save">Save</string>
+    <string name="editor_saved">Saved</string>
+    <string name="editor_saving">Saving…</string>
+    <string name="editor_unsaved">Unsaved changes</string>
+    <string name="editor_document_info">%1$d × %2$d · %3$s</string>
+    <string name="editor_menu_save">Save project</string>
+    <string name="editor_menu_duplicate">Duplicate project</string>
+    <string name="editor_menu_info">Document info</string>
+    <string name="editor_menu_settings">Settings</string>
+    <string name="editor_close_discard">Discard unsaved changes?</string>
+    <string name="editor_close_save">Save</string>
+    <string name="editor_close_discard_action">Discard</string>
+    <string name="editor_saved_toast">Project saved</string>
+    <string name="editor_autosaved">Autosaved</string>
+
+    <!-- Editor: tools -->
+    <string name="tool_layers">Layers</string>
+    <string name="tool_text">Text</string>
+    <string name="tool_adjust">Adjust</string>
+    <string name="tool_transform">Transform</string>
+    <string name="tool_ai">AI</string>
+    <string name="tool_assets">Assets</string>
+    <string name="tool_crop">Crop</string>
+    <string name="tool_select">Select</string>
+
+    <!-- Layers panel -->
+    <string name="layers_title">Layers</string>
+    <string name="layers_add">Add layer</string>
+    <string name="layers_duplicate">Duplicate</string>
+    <string name="layers_delete">Delete</string>
+    <string name="layers_up">Move up</string>
+    <string name="layers_down">Move down</string>
+    <string name="layers_rename">Rename</string>
+    <string name="layers_visibility">Show / hide</string>
+    <string name="layers_opacity">Opacity</string>
+    <string name="layers_blend">Blend mode</string>
+    <string name="layers_empty">This document has no layers yet</string>
+    <string name="layers_group">Group</string>
+    <string name="layers_ungroup">Ungroup</string>
+    <string name="layers_merge_visible">Merge visible</string>
+    <string name="layers_flatten">Flatten</string>
+    <string name="layers_mask_added">Layer mask added</string>
+    <string name="layers_renamed">Layer renamed</string>
+    <string name="layers_deleted">Layer deleted</string>
+
+    <!-- Text studio -->
+    <string name="text_title">Text studio</string>
+    <string name="text_hint">Type here</string>
+    <string name="text_add">Add text</string>
+    <string name="text_update">Update text</string>
+    <string name="text_font">Font</string>
+    <string name="text_size">Size</string>
+    <string name="text_color">Colour</string>
+    <string name="text_align">Alignment</string>
+    <string name="text_align_start">Start</string>
+    <string name="text_align_center">Centre</string>
+    <string name="text_align_end">End</string>
+    <string name="text_tracking">Letter spacing</string>
+    <string name="text_line_height">Line height</string>
+    <string name="text_rtl">Right-to-left</string>
+    <string name="text_bold">Bold</string>
+    <string name="text_brand_styles">Brand styles</string>
+    <string name="text_added">Text layer added</string>
+    <string name="text_updated">Text updated</string>
+    <string name="text_empty">Type something first</string>
+    <string name="text_no_layer">Select a text layer to edit it</string>
+
+    <!-- Adjust -->
+    <string name="adjust_title">Adjustments</string>
+    <string name="adjust_invert">Invert</string>
+    <string name="adjust_hue">Hue</string>
+    <string name="adjust_saturation">Saturation</string>
+    <string name="adjust_lightness">Lightness</string>
+    <string name="adjust_black_white">Black &amp; white</string>
+    <string name="adjust_auto_tone">Auto tone</string>
+    <string name="adjust_auto_contrast">Auto contrast</string>
+    <string name="adjust_auto_color">Auto colour</string>
+    <string name="adjust_apply">Apply</string>
+    <string name="adjust_note">Adjustments are added as non-destructive adjustment layers you can edit later.</string>
+
+    <!-- Transform -->
+    <string name="transform_title">Transform</string>
+    <string name="transform_rotate_left">Rotate left</string>
+    <string name="transform_rotate_right">Rotate right</string>
+    <string name="transform_flip_h">Flip horizontal</string>
+    <string name="transform_flip_v">Flip vertical</string>
+    <string name="transform_scale">Scale image</string>
+    <string name="transform_crop">Crop to selection</string>
+    <string name="transform_fit">Fit to screen</string>
+    <string name="transform_actual_size">Actual size</string>
+
+    <!-- AI -->
+    <string name="ai_title">AI tools</string>
+    <string name="ai_quick_remove">Quick remove</string>
+    <string name="ai_quick_remove_body">On-device Select Subject and edge refinement. Works offline, no download, and the result is a layer mask you can undo.</string>
+    <string name="ai_high_quality">High quality remove</string>
+    <string name="ai_high_quality_body">A BiRefNet / U²-Net model, run on-device with ONNX Runtime. More accurate on hair and soft edges; needs a one-time model download.</string>
+    <string name="ai_model_state_missing">Model not downloaded</string>
+    <string name="ai_model_state_valid">Model ready</string>
+    <string name="ai_model_state_corrupt">Model is incomplete — download it again</string>
+    <string name="ai_download_model">Download model (%1$s)</string>
+    <string name="ai_downloading">Downloading… %1$d%%</string>
+    <string name="ai_download_metered">A mobile network is in use. Allow the download in Settings.</string>
+    <string name="ai_download_failed">The model could not be downloaded: %1$s</string>
+    <string name="ai_download_done">Model ready</string>
+    <string name="ai_working">Removing the background…</string>
+    <string name="ai_cancel">Cancel</string>
+    <string name="ai_cancelled">Cancelled — nothing was changed</string>
+    <string name="ai_applied">Background removed as a layer mask</string>
+    <string name="ai_failed">Background removal failed: %1$s</string>
+    <string name="ai_no_subject">No subject was found in this layer</string>
+    <string name="ai_select_subject">Select subject</string>
+    <string name="ai_select_sky">Select sky</string>
+    <string name="ai_refine_edge">Refine edge</string>
+    <string name="ai_keep_model">Model: %1$s</string>
+    <string name="ai_inference_time">Inference %1$d ms · total %2$d ms</string>
+    <string name="ai_delete_model">Delete model</string>
+    <string name="ai_model_deleted">Model deleted</string>
+
+    <!-- Export -->
+    <string name="export_title">Export</string>
+    <string name="export_format">Format</string>
+    <string name="export_png">PNG — lossless, keeps transparency</string>
+    <string name="export_jpeg">JPEG — small, no transparency</string>
+    <string name="export_webp">WebP — small, keeps transparency</string>
+    <string name="export_psd">PSD — layered Photoshop file</string>
+    <string name="export_pcraft">PhotoCraft project — layered</string>
+    <string name="export_scale">Size</string>
+    <string name="export_scale_full">Full size (%1$d × %2$d)</string>
+    <string name="export_scale_percent">%1$d%% (%2$d × %3$d)</string>
+    <string name="export_quality">Quality</string>
+    <string name="export_transparency">Keep transparency</string>
+    <string name="export_transparency_note">JPEG cannot store transparency; transparent pixels become white.</string>
+    <string name="export_action">Export</string>
+    <string name="export_share">Share</string>
+    <string name="export_saved">Saved to %1$s</string>
+    <string name="export_failed">Export failed: %1$s</string>
+    <string name="export_empty">The exported file is empty — nothing was written</string>
+    <string name="export_note_not_layered">A flat export cannot be reopened as layers. Use “PhotoCraft project” or PSD to keep them.</string>
+    <string name="export_working">Exporting…</string>
+
+    <!-- Import -->
+    <string name="import_title">Import</string>
+    <string name="import_from_photos">Photo library</string>
+    <string name="import_from_files">Files</string>
+    <string name="import_from_assets">My assets</string>
+    <string name="import_failed">Could not import %1$s: %2$s</string>
+    <string name="import_unsupported">That file is not an image PhotoCraft can open</string>
+    <string name="import_warnings">Opened with notes</string>
+    <string name="import_opening">Opening…</string>
+    <string name="import_placed">Added to the document</string>
+    <string name="import_permission_needed">PhotoCraft needs permission to read the image you picked.</string>
+
+    <!-- Brand kit -->
+    <string name="brand_colors">Colours</string>
+    <string name="brand_fonts">Fonts</string>
+    <string name="brand_logos">Logos</string>
+    <string name="brand_add_color">Add colour</string>
+    <string name="brand_add_font">Add font</string>
+    <string name="brand_add_logo">Add logo</string>
+    <string name="brand_empty_colors">No brand colours yet</string>
+    <string name="brand_empty_fonts">No brand fonts yet</string>
+    <string name="brand_empty_logos">No logos yet</string>
+    <string name="brand_color_name">Colour name</string>
+    <string name="brand_saved">Brand kit saved</string>
+    <string name="brand_used">Applied</string>
+    <string name="brand_delete_logo">Delete this logo?</string>
+
+    <!-- Assets -->
+    <string name="assets_add">Import</string>
+    <string name="assets_empty">No assets yet. Import photos, logos or textures to reuse them in any project.</string>
+    <string name="assets_place">Place in document</string>
+    <string name="assets_place_need_doc">Open a project to place assets</string>
+    <string name="assets_added">Asset added</string>
+    <string name="assets_deleted">Asset deleted</string>
+    <string name="assets_size">%1$d × %2$d · %3$s</string>
+
+    <!-- Settings -->
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">Follow system</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">System default</string>
+    <string name="settings_language_ar">العربية</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_editing">Editing</string>
+    <string name="settings_autosave">Autosave</string>
+    <string name="settings_autosave_summary">Save the open project automatically while you work</string>
+    <string name="settings_transparency_grid">Transparency grid on the canvas</string>
+    <string name="settings_stylus">Stylus pressure</string>
+    <string name="settings_reduce_motion">Reduce motion</string>
+    <string name="settings_export">Export defaults</string>
+    <string name="settings_models">Background-removal models</string>
+    <string name="settings_models_summary">%1$s used · %2$s downloaded</string>
+    <string name="settings_model_tier">Preferred model</string>
+    <string name="settings_model_tier_auto">Choose automatically</string>
+    <string name="settings_download_metered">Download models on a mobile network</string>
+    <string name="settings_storage">Storage</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version %1$s</string>
+    <string name="settings_engine">Engine %1$s</string>
+    <string name="settings_licences">Licences and attribution</string>
+    <string name="settings_restart_needed">Restart PhotoCraft to apply the language change</string>
+
+    <string name="relative_now">just now</string>
+    <string name="relative_minutes">%1$d min ago</string>
+    <string name="relative_hours">%1$d h ago</string>
+    <string name="relative_days">%1$d d ago</string>
+
+    <!-- Common -->
+    <string name="common_ok">OK</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_retry">Try again</string>
+    <string name="common_close">Close</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_save">Save</string>
+    <string name="common_done">Done</string>
+    <string name="common_loading">Loading…</string>
+    <string name="common_error">Something went wrong: %1$s</string>
+    <string name="common_engine_error">The engine reported: %1$s</string>
+    <string name="common_permission_denied">Permission denied</string>
+
+    <!-- Accessibility -->
+    <string name="a11y_canvas">Document canvas</string>
+    <string name="a11y_thumbnail">Project thumbnail</string>
+    <string name="a11y_layer_icon">Layer preview</string>
+    <string name="a11y_project_card">Project card</string>
+    <string name="a11y_asset">Asset</string>
+    <string name="a11y_brand_color">Brand colour</string>
+    <string name="assets_title">Asset library</string>
+    <string name="assets_hint">Assets you import here can be placed in any project.</string>
+    <string name="layers_hide">Hide layer</string>
+    <string name="layers_show">Show layer</string>
+    <string name="text_leading">Line height</string>
+    <string name="assets_place_in_project">Place in project</string>
+</resources>

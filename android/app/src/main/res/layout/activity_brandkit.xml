@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Brand kit: colours, fonts, logos and text styles, all persisted and reusable in any project. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground"
+    android:orientation="vertical"
+    tools:context=".ui.brandkit.BrandKitActivity">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/pc_surface"
+        app:navigationIcon="@drawable/ic_close"
+        app:navigationContentDescription="@string/common_close"
+        app:title="@string/title_brand_kit" />
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/screen_gutter"
+            android:paddingEnd="@dimen/screen_gutter"
+            android:paddingBottom="@dimen/space_8">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="@dimen/space_3"
+                android:text="@string/brand_colors"
+                android:textAppearance="@style/Widget.PhotoCraft.PanelTitle" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/colors"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                tools:listitem="@layout/item_brand_color" />
+
+            <TextView
+                android:id="@+id/colorsEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="@dimen/space_3"
+                android:text="@string/brand_empty_colors"
+                android:textAppearance="@style/TextAppearance.PhotoCraft.Body"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/addColor"
+                style="@style/Widget.PhotoCraft.Button.Outlined"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/brand_add_color"
+                app:icon="@drawable/ic_add" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="@dimen/space_6"
+                android:text="@string/brand_fonts"
+                android:textAppearance="@style/Widget.PhotoCraft.PanelTitle" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/fonts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false" />
+
+            <TextView
+                android:id="@+id/fontsEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="@dimen/space_3"
+                android:text="@string/brand_empty_fonts"
+                android:textAppearance="@style/TextAppearance.PhotoCraft.Body"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/addFont"
+                style="@style/Widget.PhotoCraft.Button.Outlined"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/brand_add_font"
+                app:icon="@drawable/ic_add" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="@dimen/space_6"
+                android:text="@string/brand_logos"
+                android:textAppearance="@style/Widget.PhotoCraft.PanelTitle" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/logos"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false" />
+
+            <TextView
+                android:id="@+id/logosEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="@dimen/space_3"
+                android:text="@string/brand_empty_logos"
+                android:textAppearance="@style/TextAppearance.PhotoCraft.Body"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/addLogo"
+                style="@style/Widget.PhotoCraft.Button.Outlined"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/brand_add_logo"
+                app:icon="@drawable/ic_add" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</LinearLayout>

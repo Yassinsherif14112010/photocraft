@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PhotoCraft design system — colour tokens (dark theme). Same names as the light theme. -->
+<resources>
+
+    <!-- Brand -->
+    <color name="pc_primary">#B6C6FF</color>
+    <color name="pc_primary_dark">#0B2C6B</color>
+    <color name="pc_primary_container">#1F3FA8</color>
+    <color name="pc_on_primary">#002E85</color>
+    <color name="pc_secondary">#7FD6DE</color>
+    <color name="pc_secondary_container">#0E4F57</color>
+    <color name="pc_on_secondary">#00363A</color>
+    <color name="pc_tertiary">#D0BCFF</color>
+
+    <!-- Surfaces -->
+    <color name="pc_surface">#121318</color>
+    <color name="pc_surface_variant">#1E2027</color>
+    <color name="pc_surface_raised">#1A1C22</color>
+    <color name="pc_surface_panel">#171820</color>
+    <color name="pc_background">#0E0F13</color>
+    <color name="pc_scrim">#B3000000</color>
+    <color name="pc_outline">#3A3D48</color>
+    <color name="pc_divider">#262832</color>
+
+    <!-- Text -->
+    <color name="pc_text_primary">#E4E5EC</color>
+    <color name="pc_text_secondary">#A8AAB6</color>
+    <color name="pc_text_disabled">#6C6F7A</color>
+    <color name="pc_text_on_primary">#002E85</color>
+    <color name="pc_text_on_surface">#E4E5EC</color>
+    <color name="pc_text_link">#B6C6FF</color>
+
+    <!-- State -->
+    <color name="pc_state_saved">#6EE7B7</color>
+    <color name="pc_state_unsaved">#F2C078</color>
+    <color name="pc_state_error">#F2B8B5</color>
+    <color name="pc_state_error_container">#4A1E1C</color>
+    <color name="pc_state_warning">#F2C078</color>
+    <color name="pc_state_success">#6EE7B7</color>
+    <color name="pc_state_selected">#1F3FA8</color>
+
+    <!-- Canvas -->
+    <color name="pc_canvas_backdrop">#08090C</color>
+    <color name="pc_canvas_checker_light">#262832</color>
+    <color name="pc_canvas_checker_dark">#1A1C22</color>
+
+    <!-- Editor chrome -->
+    <color name="pc_topbar">#121318</color>
+    <color name="pc_bottombar">#121318</color>
+    <color name="pc_tool_active">#B6C6FF</color>
+    <color name="pc_tool_inactive">#A8AAB6</color>
+    <color name="pc_slider_active">#B6C6FF</color>
+    <color name="pc_slider_inactive">#3A3D48</color>
+
+    <color name="colorPrimary">@color/pc_primary</color>
+    <color name="colorPrimaryDark">@color/pc_primary_dark</color>
+    <color name="colorAccent">@color/pc_secondary</color>
+    <color name="colorSurface">@color/pc_surface</color>
+    <color name="colorOnSurface">@color/pc_text_primary</color>
+    <color name="colorError">@color/pc_state_error</color>
+    <color name="colorOnPrimary">@color/pc_on_primary</color>
+    <color name="colorOnError">#4A1E1C</color>
+    <color name="colorControlNormal">@color/pc_text_secondary</color>
+    <color name="colorControlActivated">@color/pc_primary</color>
+    <color name="colorControlHighlight">#33FFFFFF</color>
+    <color name="colorBackground">@color/pc_background</color>
+    <color name="statusBarColor">@color/pc_surface</color>
+</resources>

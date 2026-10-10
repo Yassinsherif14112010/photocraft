@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PhotoCraft — Arabic strings (RTL). Same keys as values/strings.xml; the checker in
+     tools/check_resources.py fails if a key is missing or extra in either file. -->
+<resources>
+    <string name="app_name">فوتوكرافت</string>
+    <string name="app_short_name">كرافت</string>
+
+    <!-- Home -->
+    <string name="title_home">فوتوكرافت</string>
+    <string name="title_editor">المحرّر</string>
+    <string name="title_templates">القوالب</string>
+    <string name="title_assets">الملفات</string>
+    <string name="title_brand_kit">حقيبة العلامة</string>
+    <string name="title_settings">الإعدادات</string>
+
+    <string name="home_new_project">مشروع جديد</string>
+    <string name="home_import">استيراد</string>
+    <string name="home_templates">القوالب</string>
+    <string name="home_brand_kit">حقيبة العلامة</string>
+    <string name="home_assets">الملفات</string>
+    <string name="home_search_hint">ابحث في المشاريع</string>
+    <string name="home_continue_editing">متابعة التحرير</string>
+    <string name="home_recent">الأحدث</string>
+    <string name="home_empty_title">لا توجد مشاريع بعد</string>
+    <string name="home_empty_body">أنشئ لوحة فارغة، أو ابدأ من قالب لوسائل التواصل، أو استورد صورة للبدء.</string>
+    <string name="home_empty_search">لا يوجد مشروع يطابق «%1$s»</string>
+    <string name="home_project_size">%1$d × %2$d</string>
+    <string name="home_project_edited">آخر تعديل %1$s</string>
+    <string name="home_menu_rename">إعادة تسمية</string>
+    <string name="home_menu_duplicate">تكرار</string>
+    <string name="home_menu_delete">حذف</string>
+    <string name="home_menu_export">تصدير…</string>
+    <string name="home_delete_confirm">حذف «%1$s»؟ سيُحذف ملف المشروع من هذا الجهاز.</string>
+    <string name="home_delete_done">تم حذف المشروع</string>
+
+    <!-- New project / templates -->
+    <string name="newproject_title">مشروع جديد</string>
+    <string name="newproject_blank">لوحة فارغة</string>
+    <string name="newproject_custom">حجم مخصّص</string>
+    <string name="newproject_width">العرض</string>
+    <string name="newproject_height">الارتفاع</string>
+    <string name="newproject_resolution">الدقة (نقطة/بوصة)</string>
+    <string name="newproject_background">الخلفية</string>
+    <string name="newproject_bg_white">أبيض</string>
+    <string name="newproject_bg_black">أسود</string>
+    <string name="newproject_bg_transparent">شفاف</string>
+    <string name="newproject_create">إنشاء</string>
+    <string name="newproject_group_social">التواصل الاجتماعي</string>
+    <string name="newproject_group_print">الطباعة</string>
+    <string name="newproject_group_blank">فارغ</string>
+    <string name="newproject_invalid_size">أدخل مقاسًا بين ١ و٣٠٠٠٠ بكسل</string>
+
+    <!-- Presets -->
+    <string name="preset_ig_post">منشور إنستغرام</string>
+    <string name="preset_ig_portrait">إنستغرام عمودي</string>
+    <string name="preset_ig_story">ستوري إنستغرام</string>
+    <string name="preset_ig_reel">ريلز إنستغرام</string>
+    <string name="preset_fb_post">منشور فيسبوك</string>
+    <string name="preset_fb_story">ستوري فيسبوك</string>
+    <string name="preset_fb_cover">غلاف فيسبوك</string>
+    <string name="preset_yt_thumbnail">صورة يوتيوب المصغّرة</string>
+    <string name="preset_yt_channel">غلاف قناة يوتيوب</string>
+    <string name="preset_yt_short">يوتيوب شورتس</string>
+    <string name="preset_tiktok">تيك توك</string>
+    <string name="preset_x_post">منشور إكس</string>
+    <string name="preset_linkedin">منشور لينكدإن</string>
+    <string name="preset_pinterest">بينترست</string>
+    <string name="preset_a4_300">طباعة A4 بدقة ٣٠٠</string>
+    <string name="preset_a5_300">طباعة A5 بدقة ٣٠٠</string>
+    <string name="preset_letter_300">Letter أمريكي بدقة ٣٠٠</string>
+    <string name="preset_photo_4x6">صورة ٤×٦ بوصة</string>
+    <string name="preset_blank_hd">عالية الدقة ١٩٢٠ × ١٠٨٠</string>
+    <string name="preset_blank_square">مربع ٢٠٤٨</string>
+    <string name="preset_blank_transparent">مربع شفاف</string>
+
+    <!-- Editor: top bar -->
+    <string name="editor_undo">تراجع</string>
+    <string name="editor_redo">إعادة</string>
+    <string name="editor_export">تصدير</string>
+    <string name="editor_save">حفظ</string>
+    <string name="editor_saved">تم الحفظ</string>
+    <string name="editor_saving">جارٍ الحفظ…</string>
+    <string name="editor_unsaved">تغييرات غير محفوظة</string>
+    <string name="editor_document_info">%1$d × %2$d · %3$s</string>
+    <string name="editor_menu_save">حفظ المشروع</string>
+    <string name="editor_menu_duplicate">تكرار المشروع</string>
+    <string name="editor_menu_info">معلومات المستند</string>
+    <string name="editor_menu_settings">الإعدادات</string>
+    <string name="editor_close_discard">تجاهل التغييرات غير المحفوظة؟</string>
+    <string name="editor_close_save">حفظ</string>
+    <string name="editor_close_discard_action">تجاهل</string>
+    <string name="editor_saved_toast">تم حفظ المشروع</string>
+    <string name="editor_autosaved">تم الحفظ تلقائيًا</string>
+
+    <!-- Editor: tools -->
+    <string name="tool_layers">الطبقات</string>
+    <string name="tool_text">النص</string>
+    <string name="tool_adjust">التعديلات</string>
+    <string name="tool_transform">التحويل</string>
+    <string name="tool_ai">الذكاء الاصطناعي</string>
+    <string name="tool_assets">الملفات</string>
+    <string name="tool_crop">قصّ</string>
+    <string name="tool_select">تحديد</string>
+
+    <!-- Layers panel -->
+    <string name="layers_title">الطبقات</string>
+    <string name="layers_add">إضافة طبقة</string>
+    <string name="layers_duplicate">تكرار</string>
+    <string name="layers_delete">حذف</string>
+    <string name="layers_up">تحريك للأعلى</string>
+    <string name="layers_down">تحريك للأسفل</string>
+    <string name="layers_rename">إعادة تسمية</string>
+    <string name="layers_visibility">إظهار / إخفاء</string>
+    <string name="layers_opacity">الشفافية</string>
+    <string name="layers_blend">نمط الدمج</string>
+    <string name="layers_empty">لا توجد طبقات في هذا المستند بعد</string>
+    <string name="layers_group">تجميع</string>
+    <string name="layers_ungroup">فك التجميع</string>
+    <string name="layers_merge_visible">دمج الظاهر</string>
+    <string name="layers_flatten">تسطيح</string>
+    <string name="layers_mask_added">تمت إضافة قناع للطبقة</string>
+    <string name="layers_renamed">تمت إعادة تسمية الطبقة</string>
+    <string name="layers_deleted">تم حذف الطبقة</string>
+
+    <!-- Text studio -->
+    <string name="text_title">استوديو النص</string>
+    <string name="text_hint">اكتب هنا</string>
+    <string name="text_add">إضافة نص</string>
+    <string name="text_update">تحديث النص</string>
+    <string name="text_font">الخط</string>
+    <string name="text_size">الحجم</string>
+    <string name="text_color">اللون</string>
+    <string name="text_align">المحاذاة</string>
+    <string name="text_align_start">البداية</string>
+    <string name="text_align_center">الوسط</string>
+    <string name="text_align_end">النهاية</string>
+    <string name="text_tracking">تباعد الحروف</string>
+    <string name="text_line_height">ارتفاع السطر</string>
+    <string name="text_rtl">من اليمين إلى اليسار</string>
+    <string name="text_bold">عريض</string>
+    <string name="text_brand_styles">أنماط العلامة</string>
+    <string name="text_added">تمت إضافة طبقة نص</string>
+    <string name="text_updated">تم تحديث النص</string>
+    <string name="text_empty">اكتب نصًا أولًا</string>
+    <string name="text_no_layer">اختر طبقة نص لتعديلها</string>
+
+    <!-- Adjust -->
+    <string name="adjust_title">التعديلات</string>
+    <string name="adjust_invert">عكس الألوان</string>
+    <string name="adjust_hue">درجة اللون</string>
+    <string name="adjust_saturation">التشبّع</string>
+    <string name="adjust_lightness">الإضاءة</string>
+    <string name="adjust_black_white">أبيض وأسود</string>
+    <string name="adjust_auto_tone">تصحيح تلقائي</string>
+    <string name="adjust_auto_contrast">تباين تلقائي</string>
+    <string name="adjust_auto_color">لون تلقائي</string>
+    <string name="adjust_apply">تطبيق</string>
+    <string name="adjust_note">تُضاف التعديلات كطبقات تعديل غير مدمّرة يمكنك تعديلها لاحقًا.</string>
+
+    <!-- Transform -->
+    <string name="transform_title">التحويل</string>
+    <string name="transform_rotate_left">تدوير لليسار</string>
+    <string name="transform_rotate_right">تدوير لليمين</string>
+    <string name="transform_flip_h">قلب أفقي</string>
+    <string name="transform_flip_v">قلب رأسي</string>
+    <string name="transform_scale">تغيير حجم الصورة</string>
+    <string name="transform_crop">قصّ حسب التحديد</string>
+    <string name="transform_fit">ملاءمة الشاشة</string>
+    <string name="transform_actual_size">الحجم الفعلي</string>
+
+    <!-- AI -->
+    <string name="ai_title">أدوات الذكاء الاصطناعي</string>
+    <string name="ai_quick_remove">إزالة سريعة</string>
+    <string name="ai_quick_remove_body">تحديد العنصر وتنعيم الحواف داخل الجهاز. يعمل دون إنترنت ولا يحتاج تنزيلًا، والنتيجة قناع طبقة يمكن التراجع عنه.</string>
+    <string name="ai_high_quality">إزالة عالية الجودة</string>
+    <string name="ai_high_quality_body">نموذج BiRefNet أو U²-Net يعمل على الجهاز عبر ONNX Runtime. أدقّ مع الشعر والحواف الناعمة، ويحتاج تنزيل النموذج مرة واحدة.</string>
+    <string name="ai_model_state_missing">النموذج غير مُنزّل</string>
+    <string name="ai_model_state_valid">النموذج جاهز</string>
+    <string name="ai_model_state_corrupt">النموذج غير مكتمل — أعد تنزيله</string>
+    <string name="ai_download_model">تنزيل النموذج (%1$s)</string>
+    <string name="ai_downloading">جارٍ التنزيل… %1$d٪</string>
+    <string name="ai_download_metered">أنت على شبكة الهاتف. اسمح بالتنزيل من الإعدادات.</string>
+    <string name="ai_download_failed">تعذّر تنزيل النموذج: %1$s</string>
+    <string name="ai_download_done">النموذج جاهز</string>
+    <string name="ai_working">جارٍ إزالة الخلفية…</string>
+    <string name="ai_cancel">إلغاء</string>
+    <string name="ai_cancelled">تم الإلغاء — لم يتغيّر شيء</string>
+    <string name="ai_applied">تمت إزالة الخلفية كقناع طبقة</string>
+    <string name="ai_failed">تعذّرت إزالة الخلفية: %1$s</string>
+    <string name="ai_no_subject">لم يتم العثور على عنصر في هذه الطبقة</string>
+    <string name="ai_select_subject">تحديد العنصر</string>
+    <string name="ai_select_sky">تحديد السماء</string>
+    <string name="ai_refine_edge">تنعيم الحواف</string>
+    <string name="ai_keep_model">النموذج: %1$s</string>
+    <string name="ai_inference_time">الاستدلال %1$d مللي ثانية · الإجمالي %2$d مللي ثانية</string>
+    <string name="ai_delete_model">حذف النموذج</string>
+    <string name="ai_model_deleted">تم حذف النموذج</string>
+
+    <!-- Export -->
+    <string name="export_title">التصدير</string>
+    <string name="export_format">الصيغة</string>
+    <string name="export_png">PNG — بلا فقد، يحفظ الشفافية</string>
+    <string name="export_jpeg">JPEG — حجم صغير، دون شفافية</string>
+    <string name="export_webp">WebP — حجم صغير، يحفظ الشفافية</string>
+    <string name="export_psd">PSD — ملف فوتوشوب بطبقات</string>
+    <string name="export_pcraft">مشروع فوتوكرافت — بطبقات</string>
+    <string name="export_scale">الحجم</string>
+    <string name="export_scale_full">الحجم الكامل (%1$d × %2$d)</string>
+    <string name="export_scale_percent">%1$d٪ (%2$d × %3$d)</string>
+    <string name="export_quality">الجودة</string>
+    <string name="export_transparency">الحفاظ على الشفافية</string>
+    <string name="export_transparency_note">صيغة JPEG لا تدعم الشفافية؛ ستصبح البكسلات الشفافة بيضاء.</string>
+    <string name="export_action">تصدير</string>
+    <string name="export_share">مشاركة</string>
+    <string name="export_saved">تم الحفظ في %1$s</string>
+    <string name="export_failed">تعذّر التصدير: %1$s</string>
+    <string name="export_empty">الملف المُصدَّر فارغ — لم يُكتب شيء</string>
+    <string name="export_note_not_layered">لا يمكن إعادة فتح التصدير المسطّح بطبقات. استخدم «مشروع فوتوكرافت» أو PSD للحفاظ عليها.</string>
+    <string name="export_working">جارٍ التصدير…</string>
+
+    <!-- Import -->
+    <string name="import_title">استيراد</string>
+    <string name="import_from_photos">مكتبة الصور</string>
+    <string name="import_from_files">الملفات</string>
+    <string name="import_from_assets">ملفاتي</string>
+    <string name="import_failed">تعذّر استيراد %1$s: %2$s</string>
+    <string name="import_unsupported">هذا الملف ليس صورة يمكن لفوتوكرافت فتحها</string>
+    <string name="import_warnings">تم الفتح مع ملاحظات</string>
+    <string name="import_opening">جارٍ الفتح…</string>
+    <string name="import_placed">أُضيف إلى المستند</string>
+    <string name="import_permission_needed">يحتاج فوتوكرافت إلى إذن لقراءة الصورة التي اخترتها.</string>
+
+    <!-- Brand kit -->
+    <string name="brand_colors">الألوان</string>
+    <string name="brand_fonts">الخطوط</string>
+    <string name="brand_logos">الشعارات</string>
+    <string name="brand_add_color">إضافة لون</string>
+    <string name="brand_add_font">إضافة خط</string>
+    <string name="brand_add_logo">إضافة شعار</string>
+    <string name="brand_empty_colors">لا توجد ألوان بعد</string>
+    <string name="brand_empty_fonts">لا توجد خطوط بعد</string>
+    <string name="brand_empty_logos">لا توجد شعارات بعد</string>
+    <string name="brand_color_name">اسم اللون</string>
+    <string name="brand_saved">تم حفظ حقيبة العلامة</string>
+    <string name="brand_used">تم التطبيق</string>
+    <string name="brand_delete_logo">حذف هذا الشعار؟</string>
+
+    <!-- Assets -->
+    <string name="assets_add">استيراد</string>
+    <string name="assets_empty">لا توجد ملفات بعد. استورد صورًا أو شعارات أو خامات لإعادة استخدامها في أي مشروع.</string>
+    <string name="assets_place">إدراج في المستند</string>
+    <string name="assets_place_need_doc">افتح مشروعًا لإدراج الملفات</string>
+    <string name="assets_added">تمت إضافة الملف</string>
+    <string name="assets_deleted">تم حذف الملف</string>
+    <string name="assets_size">%1$d × %2$d · %3$s</string>
+
+    <!-- Settings -->
+    <string name="settings_appearance">المظهر</string>
+    <string name="settings_theme">السمة</string>
+    <string name="settings_theme_system">حسب النظام</string>
+    <string name="settings_theme_light">فاتح</string>
+    <string name="settings_theme_dark">داكن</string>
+    <string name="settings_language">اللغة</string>
+    <string name="settings_language_system">لغة النظام</string>
+    <string name="settings_language_ar">العربية</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_editing">التحرير</string>
+    <string name="settings_autosave">الحفظ التلقائي</string>
+    <string name="settings_autosave_summary">حفظ المشروع المفتوح تلقائيًا أثناء العمل</string>
+    <string name="settings_transparency_grid">شبكة الشفافية على اللوحة</string>
+    <string name="settings_stylus">ضغط القلم</string>
+    <string name="settings_reduce_motion">تقليل الحركة</string>
+    <string name="settings_export">إعدادات التصدير الافتراضية</string>
+    <string name="settings_models">نماذج إزالة الخلفية</string>
+    <string name="settings_models_summary">%1$s مستخدم · %2$s مُنزّل</string>
+    <string name="settings_model_tier">النموذج المفضّل</string>
+    <string name="settings_model_tier_auto">اختيار تلقائي</string>
+    <string name="settings_download_metered">تنزيل النماذج عبر شبكة الهاتف</string>
+    <string name="settings_storage">التخزين</string>
+    <string name="settings_about">حول</string>
+    <string name="settings_version">الإصدار %1$s</string>
+    <string name="settings_engine">المحرّك %1$s</string>
+    <string name="settings_licences">التراخيص والإسناد</string>
+    <string name="settings_restart_needed">أعد تشغيل فوتوكرافت لتطبيق تغيير اللغة</string>
+
+    <string name="relative_now">الآن</string>
+    <string name="relative_minutes">قبل %1$d دقيقة</string>
+    <string name="relative_hours">قبل %1$d ساعة</string>
+    <string name="relative_days">قبل %1$d يومًا</string>
+
+    <!-- Common -->
+    <string name="common_ok">حسنًا</string>
+    <string name="common_cancel">إلغاء</string>
+    <string name="common_retry">إعادة المحاولة</string>
+    <string name="common_close">إغلاق</string>
+    <string name="common_delete">حذف</string>
+    <string name="common_save">حفظ</string>
+    <string name="common_done">تم</string>
+    <string name="common_loading">جارٍ التحميل…</string>
+    <string name="common_error">حدث خطأ ما: %1$s</string>
+    <string name="common_engine_error">أبلغ المحرّك: %1$s</string>
+    <string name="common_permission_denied">تم رفض الإذن</string>
+
+    <!-- Accessibility -->
+    <string name="a11y_canvas">لوحة المستند</string>
+    <string name="a11y_thumbnail">صورة المشروع المصغّرة</string>
+    <string name="a11y_layer_icon">معاينة الطبقة</string>
+    <string name="a11y_project_card">بطاقة المشروع</string>
+    <string name="a11y_asset">ملف</string>
+    <string name="a11y_brand_color">لون العلامة</string>
+    <string name="assets_title">مكتبة الأصول</string>
+    <string name="assets_hint">يمكن إدراج الأصول التي تستوردها هنا في أي مشروع.</string>
+    <string name="layers_hide">إخفاء الطبقة</string>
+    <string name="layers_show">إظهار الطبقة</string>
+    <string name="text_leading">ارتفاع السطر</string>
+    <string name="assets_place_in_project">إدراج في المشروع</string>
+</resources>
