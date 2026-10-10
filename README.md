@@ -295,6 +295,22 @@ tar -xzf photocraft-<version>-freebsd-x86_64.tar.gz --strip-components 1 -C /usr
 photocraft
 ```
 
+### Android (phones, tablets and foldables)
+
+PhotoCraft for Android is the same Rust engine, compiled with `cargo-ndk` and driven from Kotlin
+through JNI — no second document model, no webview. It is adaptive (compact / medium / expanded
+window size classes, RTL Arabic) and removes backgrounds on-device (the engine's own Select Subject,
+or a BiRefNet / U²-Net ONNX model you download on demand):
+
+```sh
+scripts/check-prereqs.sh        # JDK 17+, cargo + cargo-ndk, Android SDK + NDK 27
+scripts/build-android.sh        # Linux / macOS  — or scripts\build-android.ps1 on Windows
+tests/test_tools.sh             # the checks that need no SDK
+```
+
+See [`docs/android.md`](docs/android.md) for the architecture, the build on all three platforms, and
+what is and is not verified yet.
+
 Maintainers: [`docs/releasing.md`](docs/releasing.md) explains how releases are built, signed and published.
 
 > [!IMPORTANT]
